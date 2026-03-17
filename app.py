@@ -1,12 +1,3 @@
-def criar_banco():
-    with app.app_context():
-        db.create_all()
-        # Verifica se já existe um admin antes de tentar criar
-        if not Admin.query.filter_by(username='admin').first():
-            hashed_pw = generate_password_hash('password123')
-            admin = Admin(username='admin', password_hash=hashed_pw)
-            db.session.add(admin)
-            db.session.commit()
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -16,53 +7,85 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = 'chave_secreta_france_decor'
 
-db_url = os.environ.get('DATABASE_URL', 'sqlite:///catalogo.db')
-if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
+# Configuração do Banco de Dados
+db_path = os.path.join(app.instance_path, 'catalogo.db')
+if not os.path.exists(app.instance_path):
+    os.makedirs(app.instance_path)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# Modelo do Produto - Corrigido para aceitar campos vazios
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    category = db.Column(db.String(50), nullable=True, default="Geral")
+    description = db.Column(db.Text, nullable=True)
+    price = db.Column(db.Float, nullable=True) # Aceita None (vazio)
+    image_url = db.Column(db.String(255), nullable=True)
+    is_visible = db.Column(db.Boolean, default=True)
+
 class Admin(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
 
-class Product(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(50), nullable=True) # Nova funcionalidade
-    description = db.Column(db.Text, nullable=True)
-    price = db.Column(db.Float, nullable=True)
-    image_url = db.Column(db.String(255), nullable=True)
-    is_visible = db.Column(db.Boolean, default=True)
-
 @login_manager.user_loader
 def load_user(user_id):
     return Admin.query.get(int(user_id))
 
+# Rota do Painel Admin - Protegida contra erros de envio
+@app.route('/admin', methods=['GET', 'POST'])
+@login_required
+def admin_dashboard():
+    if request.method == 'POST':
+        try:
+            name = request.form.get('name')
+            category = request.form.get('category') or "Geral"
+            description = request.form.get('description')
+            image_url = request.form.get('image_url')
+            
+            # Tratamento do preço para não quebrar o código
+            price_str = request.form.get('price')
+            price = None
+            if price_str and price_str.strip():
+                price = float(price_str.replace(',', '.'))
+            
+            if not name:
+                flash('O nome do produto é obrigatório!', 'danger')
+                return redirect(url_for('admin_dashboard'))
+
+            new_product = Product(
+                name=name, 
+                category=category, 
+                price=price, 
+                description=description, 
+                image_url=image_url
+            )
+            
+            db.session.add(new_product)
+            db.session.commit()
+            flash('Produto adicionado com sucesso!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao salvar: {str(e)}', 'danger')
+            print(f"ERRO NO SERVIDOR: {e}") # Isso aparece no seu terminal preto
+
+        return redirect(url_for('admin_dashboard'))
+
+    products = Product.query.all()
+    return render_template('admin.html', products=products)
+
+# --- MANTENHA AS OUTRAS ROTAS (index, login, logout) IGUAIS ---
 @app.route('/')
 def index():
-    search_query = request.args.get('search')
-    category_filter = request.args.get('category')
-    
-    query = Product.query.filter_by(is_visible=True)
-    
-    if search_query:
-        query = query.filter(Product.name.ilike(f'%{search_query}%'))
-    if category_filter:
-        query = query.filter(Product.category == category_filter)
-        
-    products = query.all()
-    
-    # Pegar todas as categorias únicas para os botões de filtro
-    categories = db.session.query(Product.category).filter(Product.category != None).distinct().all()
-    categories = [c[0] for c in categories]
-
+    products = Product.query.filter_by(is_visible=True).all()
+    categories = db.session.query(Product.category).distinct().all()
+    categories = [c[0] for c in categories if c[0]]
     return render_template('index.html', products=products, categories=categories)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -74,55 +97,27 @@ def login():
         if admin and check_password_hash(admin.password_hash, password):
             login_user(admin)
             return redirect(url_for('admin_dashboard'))
-        flash('Credenciais inválidas.', 'danger')
+        flash('Usuário ou senha incorretos.', 'danger')
     return render_template('login.html')
 
 @app.route('/logout')
 @login_required
 def logout():
-    logout_user()
-    return redirect(url_for('index'))
-
-@app.route('/admin', methods=['GET', 'POST'])
-@login_required
-def admin_dashboard():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        category = request.form.get('category')
-        price_str = request.form.get('price')
-        price = float(price_str.replace(',', '.')) if price_str else None
-        description = request.form.get('description')
-        image_url = request.form.get('image_url')
-        
-        new_product = Product(name=name, category=category, price=price, description=description, image_url=image_url)
-        db.session.add(new_product)
-        db.session.commit()
-        flash('Produto adicionado!', 'success')
-        return redirect(url_for('admin_dashboard'))
-
-    products = Product.query.all()
-    return render_template('admin.html', products=products)
+    logout_user(); return redirect(url_for('index'))
 
 @app.route('/admin/delete/<int:id>')
 @login_required
 def delete_product(id):
-    product = Product.query.get_or_404(id)
-    db.session.delete(product)
-    db.session.commit()
+    p = Product.query.get_or_404(id); db.session.delete(p); db.session.commit()
     return redirect(url_for('admin_dashboard'))
 
 def criar_banco():
     with app.app_context():
         db.create_all()
-        if not Admin.query.first():
-            hashed_pw = generate_password_hash('password123')
-            admin = Admin(username='admin', password_hash=hashed_pw)
-            db.session.add(admin)
+        if not Admin.query.filter_by(username='admin').first():
+            db.session.add(Admin(username='admin', password_hash=generate_password_hash('password123')))
             db.session.commit()
 
-criar_banco()
-
 if __name__ == '__main__':
+    criar_banco()
     app.run(debug=True)
-
-    
