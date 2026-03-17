@@ -6,12 +6,12 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_premium_2026'
+app.secret_key = 'france_decor_premium_v3'
 
 if os.environ.get('DATABASE_URL'):
     db_url = os.environ.get('DATABASE_URL').replace("postgres://", "postgresql://", 1)
 else:
-    temp_db = os.path.join(tempfile.gettempdir(), 'francedecor_final.db')
+    temp_db = os.path.join(tempfile.gettempdir(), 'francedecor_final_v3.db')
     db_url = f'sqlite:///{temp_db}'
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
@@ -73,6 +73,11 @@ def admin():
 def delete(id):
     p = Product.query.get(id); db.session.delete(p); db.session.commit()
     return redirect(url_for('admin'))
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
 
 with app.app_context():
     db.create_all()
