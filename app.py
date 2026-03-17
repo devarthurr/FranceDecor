@@ -1,22 +1,27 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_key_2026'
+app.secret_key = 'france_decor_2026_safe_key'
 
-# Configuração simplificada: Banco de dados na mesma pasta do app.py
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'catalogo.db')
+# --- SOLUÇÃO PARA O ERRO DE LEITURA (READ-ONLY) ---
+# Criamos a pasta 'instance' manualmente e garantimos que o banco fique lá
+if not os.path.exists(app.instance_path):
+    os.makedirs(app.instance_path)
+
+# Caminho absoluto para o banco de dados dentro da pasta instance
+db_path = os.path.join(app.instance_path, 'catalogo.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# Tabelas
+# Modelos
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -47,6 +52,7 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
+        flash('Usuário ou senha inválidos.')
     return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])
@@ -55,19 +61,25 @@ def admin():
     if request.method == 'POST':
         try:
             nome = request.form.get('name')
-            preco_str = request.form.get('price')
-            img = request.form.get('image_url')
             desc = request.form.get('description')
+            img = request.form.get('image_url')
+            preco_raw = request.form.get('price')
             
-            preco = float(preco_str.replace(',', '.')) if preco_str else 0.0
+            # Tratamento de preço
+            preco = 0.0
+            if preco_raw:
+                preco = float(preco_raw.replace(',', '.'))
 
-            novo = Product(name=nome, price=preco, image_url=img, description=desc)
-            db.session.add(novo)
+            novo_produto = Product(name=nome, description=desc, image_url=img, price=preco)
+            
+            db.session.add(novo_produto)
             db.session.commit()
+            print(f">>> Produto '{nome}' cadastrado com sucesso!")
             return redirect(url_for('admin'))
         except Exception as e:
             db.session.rollback()
-            return f"Erro ao salvar produto: {e}"
+            print(f">>> ERRO AO CADASTRAR: {e}")
+            return f"Erro ao salvar no banco: {e}. Verifique as permissões da pasta."
 
     produtos = Product.query.all()
     return render_template('admin.html', produtos=produtos)
@@ -86,7 +98,7 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
-# Iniciar Banco
+# Inicialização segura
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
