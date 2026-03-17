@@ -68,6 +68,9 @@ def admin_dashboard():
             )
             
             db.session.add(new_product)
+            db.session.commit() # <--- Esta linha é a mais importante!
+            print(f"Produto {name} salvo com sucesso!") # Isso vai aparecer no seu terminal preto
+            return redirect(url_for('admin_dashboard'))
             db.session.commit()
             flash('Produto adicionado com sucesso!', 'success')
         except Exception as e:
