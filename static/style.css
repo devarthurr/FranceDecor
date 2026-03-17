@@ -1,0 +1,76 @@
+:root {
+    /* Mude estas cores para combinar exatamente com a sua logo! */
+    --cor-primaria: #0a3d62;   /* Azul escuro elegante */
+    --cor-secundaria: #ffffff; /* Branco para os textos/fundos */
+    --cor-destaque: #f5f6fa;   /* Cinza bem clarinho para o fundo do site */
+    --cor-texto: #2f3640;      /* Cinza escuro para leitura confortável */
+}
+
+body {
+    background-color: var(--cor-destaque);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: var(--cor-texto);
+}
+
+/* Barra de Navegação */
+.navbar-custom {
+    background-color: var(--cor-primaria);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.navbar-custom .navbar-brand {
+    color: var(--cor-secundaria) !important;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+.logo-img {
+    height: 40px;
+    width: auto;
+    margin-right: 12px;
+    border-radius: 4px;
+}
+
+/* Botões Customizados */
+.btn-admin {
+    background-color: transparent;
+    color: var(--cor-secundaria);
+    border: 1px solid var(--cor-secundaria);
+}
+.btn-admin:hover {
+    background-color: var(--cor-secundaria);
+    color: var(--cor-primaria);
+}
+.btn-whatsapp {
+    background-color: #25D366;
+    color: white;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+.btn-whatsapp:hover {
+    background-color: #1ebe57;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(37, 211, 102, 0.4);
+}
+
+/* Cards de Produto (Efeito 3D) */
+.product-card {
+    border: none;
+    border-radius: 12px;
+    background-color: white;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+.product-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 25px rgba(0,0,0,0.15);
+}
+
+/* Rodapé Profissional */
+.footer-custom {
+    background-color: var(--cor-primaria);
+    color: var(--cor-secundaria);
+    padding: 20px 0;
+    margin-top: 50px;
+    text-align: center;
+}
