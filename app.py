@@ -5,108 +5,93 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2024_key'
+app.secret_key = 'francedecor_secret'
 
-# Configuração robusta do Banco de Dados
-db_path = os.path.join(app.instance_path, 'catalogo.db')
-if not os.path.exists(app.instance_path):
-    os.makedirs(app.instance_path)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+# Caminho do Banco de Dados
+db_dir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'catalogo.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-class Admin(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique=True, nullable=False)
-    password_hash = db.Column(db.String(200), nullable=False)
-
+# Modelo do Produto (Versão Simplificada e Funcional)
 class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    category = db.Column(db.String(50), nullable=True, default="Geral")
-    description = db.Column(db.Text, nullable=True)
-    price = db.Column(db.Float, nullable=True)
-    image_url = db.Column(db.String(255), nullable=True)
-    is_visible = db.Column(db.Boolean, default=True)
+    description = db.Column(db.Text)
+    price = db.Column(db.Float)
+    image_url = db.Column(db.String(500))
+
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True)
+    password = db.Column(db.String(200))
 
 @login_manager.user_loader
 def load_user(user_id):
-    return Admin.query.get(int(user_id))
+    return User.query.get(int(user_id))
+
+# --- ROTAS ---
 
 @app.route('/')
 def index():
-    products = Product.query.filter_by(is_visible=True).order_by(Product.id.desc()).all()
-    categories = db.session.query(Product.category).distinct().all()
-    categories = [c[0] for c in categories if c[0]]
-    return render_template('index.html', products=products, categories=categories)
+    produtos = Product.query.all()
+    return render_template('index.html', produtos=produtos)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        user = Admin.query.filter_by(username=request.form.get('username')).first()
-        if user and check_password_hash(user.password_hash, request.form.get('password')):
+        user = User.query.filter_by(username=request.form.get('username')).first()
+        if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
-            return redirect(url_for('admin_dashboard'))
+            return redirect(url_for('admin'))
+        flash('Login inválido!')
     return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
-def admin_dashboard():
+def admin():
     if request.method == 'POST':
-        print(">>> TENTANDO CRIAR PRODUTO...") # LOG NO TERMINAL
-        try:
-            name = request.form.get('name')
-            price_raw = request.form.get('price')
-            price = float(price_raw.replace(',', '.')) if price_raw else None
-            
-            novo_p = Product(
-                name=name,
-                category=request.form.get('category') or "Geral",
-                description=request.form.get('description'),
-                image_url=request.form.get('image_url'),
-                price=price
-            )
-            
-            db.session.add(novo_p)
-            db.session.commit()
-            print(f">>> SUCESSO: Produto '{name}' salvo no banco!") # LOG NO TERMINAL
-            flash('Produto cadastrado com sucesso!', 'success')
-        except Exception as e:
-            db.session.rollback()
-            print(f">>> ERRO AO SALVAR: {e}") # LOG NO TERMINAL
-            flash(f'Erro técnico: {e}', 'danger')
-            
-        return redirect(url_for('admin_dashboard'))
-    
-    products = Product.query.all()
-    return render_template('admin.html', products=products)
+        # Captura os dados do formulário
+        nome = request.form.get('name')
+        desc = request.form.get('description')
+        img = request.form.get('image_url')
+        preco_raw = request.form.get('price')
+        
+        # Converte preço se existir
+        preco = float(preco_raw.replace(',', '.')) if preco_raw else 0.0
 
-@app.route('/admin/delete/<int:id>')
+        novo_produto = Product(name=nome, description=desc, image_url=img, price=preco)
+        
+        db.session.add(novo_produto)
+        db.session.commit() # Salva no arquivo catalogo.db
+        return redirect(url_for('admin'))
+
+    produtos = Product.query.all()
+    return render_template('admin.html', produtos=produtos)
+
+@app.route('/delete/<int:id>')
 @login_required
-def delete_product(id):
+def delete(id):
     p = Product.query.get(id)
-    if p:
-        db.session.delete(p)
-        db.session.commit()
-    return redirect(url_for('admin_dashboard'))
+    db.session.delete(p)
+    db.session.commit()
+    return redirect(url_for('admin'))
 
 @app.route('/logout')
 def logout():
     logout_user()
     return redirect(url_for('index'))
 
-def init_db():
-    with app.app_context():
-        db.create_all()
-        if not Admin.query.filter_by(username='admin').first():
-            db.session.add(Admin(username='admin', password_hash=generate_password_hash('password123')))
-            db.session.commit()
-            print(">>> Banco iniciado e Admin criado.")
+# Criar banco e usuário admin inicial
+with app.app_context():
+    db.create_all()
+    if not User.query.filter_by(username='admin').first():
+        hashed_pw = generate_password_hash('password123')
+        db.session.add(User(username='admin', password=hashed_pw))
+        db.session.commit()
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True)
