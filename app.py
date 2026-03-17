@@ -1,3 +1,12 @@
+def criar_banco():
+    with app.app_context():
+        db.create_all()
+        # Verifica se já existe um admin antes de tentar criar
+        if not Admin.query.filter_by(username='admin').first():
+            hashed_pw = generate_password_hash('password123')
+            admin = Admin(username='admin', password_hash=hashed_pw)
+            db.session.add(admin)
+            db.session.commit()
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
@@ -115,3 +124,5 @@ criar_banco()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+    
