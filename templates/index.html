@@ -10,11 +10,10 @@
         body { background-color: #f8f9fa; }
         .navbar { background: var(--azul); border-bottom: 4px solid var(--gold); padding: 10px 0; }
         .logo-nav { height: 75px; border-radius: 12px; border: 2px solid white; background: white; }
-        .insta-link { color: white; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 8px; }
         .card-product { border: none; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); background: white; }
-        .img-box { height: 240px; display: flex; align-items: center; justify-content: center; padding: 15px; }
+        .img-box { height: 240px; display: flex; align-items: center; justify-content: center; padding: 15px; overflow: hidden; }
         .img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .admin-lock { position: fixed; bottom: 25px; right: 25px; background: rgba(0,0,0,0.2); color: white; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; z-index: 1000; }
+        .admin-lock { position: fixed; bottom: 25px; right: 25px; background: rgba(0,0,0,0.2); color: white; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; }
     </style>
 </head>
 <body>
@@ -24,25 +23,26 @@
                 <img src="{{ url_for('static', filename='logo.jpg') }}" class="logo-nav">
                 FRANCE DECOR
             </a>
-            <a href="https://www.instagram.com/_france.decor/" target="_blank" class="insta-link">
-                <i class="bi bi-instagram fs-4"></i> <span>Instagram</span>
+            <a href="https://www.instagram.com/_france.decor/" target="_blank" class="text-white text-decoration-none fw-bold">
+                <i class="bi bi-instagram fs-4"></i> Instagram
             </a>
         </div>
     </nav>
-    <div class="container pb-5 px-3">
+
+    <div class="container pb-5">
         <div class="row row-cols-1 row-cols-md-3 g-4">
             {% for p in produtos %}
             <div class="col">
                 <div class="card card-product h-100 p-2 text-center">
                     <a href="/produto/{{p.id}}" class="text-decoration-none text-dark">
                         <div class="img-box">
-                            {% set img_list = p.image_urls.split(',') if p.image_urls else [''] %}
-                            <img src="{{ img_list[0] }}">
+                            {% set img_name = p.image_urls.split(',')[0] if p.image_urls else '' %}
+                            <img src="{{ url_for('static', filename='produtos/' + img_name) }}">
                         </div>
                         <h6 class="fw-bold mt-2">{{ p.name }}</h6>
-                        <div class="text-primary fw-bold mb-2">{% if p.price > 0 %} R$ {{ "%.2f"|format(p.price) }} {% else %} Consultar valor {% endif %}</div>
+                        <div class="text-primary fw-bold">R$ {{ "%.2f"|format(p.price) if p.price > 0 else "Consultar" }}</div>
                     </a>
-                    <a href="https://wa.me/5511999999999?text=Vi o produto {{ p.name }} no catálogo" class="btn btn-success w-100 rounded-pill fw-bold">WhatsApp</a>
+                    <a href="https://wa.me/5511999999999" class="btn btn-success w-100 rounded-pill fw-bold mt-2">WhatsApp</a>
                 </div>
             </div>
             {% endfor %}

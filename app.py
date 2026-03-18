@@ -6,36 +6,25 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_final_fix_2026'
+app.secret_key = 'france_decor_final_ultra_v3'
 
-# --- CONFIGURAÇÃO DE PASTAS (HÍBRIDA) ---
+# --- CONFIGURAÇÃO DE PASTAS ---
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-# Se estiver na Vercel, usa a pasta /tmp, se for no PC, usa a pasta do VS Code
-if os.environ.get('VERCEL'):
-    UPLOAD_FOLDER = '/tmp'
-    db_path = '/tmp/france_decor.db'
-else:
-    UPLOAD_FOLDER = os.path.join(basedir, 'static', 'produtos')
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.makedirs(UPLOAD_FOLDER)
-    
-    db_dir = os.path.join(basedir, 'database_file')
-    if not os.path.exists(db_dir): os.makedirs(db_dir)
-    db_path = os.path.join(db_dir, 'france_decor.db')
+# Pasta física no seu VS Code
+UPLOAD_FOLDER = os.path.join(basedir, 'static', 'produtos')
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
 # --- BANCO DE DADOS ---
-database_url = os.environ.get('DATABASE_URL')
-if database_url:
-    if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
+db_dir = os.path.join(basedir, 'database_file')
+if not os.path.exists(db_dir): os.makedirs(db_dir)
+db_path = os.path.join(db_dir, 'france_decor.db')
 
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -70,7 +59,8 @@ def index():
 @app.route('/produto/<int:id>')
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
-    images = [img.strip() for img in p.image_urls.split(',')] if p.image_urls else []
+    # Importante: limpando espaços e garantindo a lista
+    images = [img.strip() for img in p.image_urls.split(',') if img.strip()]
     return render_template('produto.html', p=p, images=images)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -93,13 +83,18 @@ def admin():
             
             files = request.files.getlist('fotos')
             saved_paths = []
+            
             for file in files:
                 if file and allowed_file(file.filename):
+                    # Criar nome seguro para o arquivo
                     filename = secure_filename(file.filename)
-                    unique_name = f"{secure_filename(nome)}_{filename}"
+                    unique_name = f"foto_{nome.replace(' ', '_')}_{filename}"
+                    
+                    # Salva fisicamente na pasta static/produtos
                     file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
-                    # No site, o caminho sempre aponta para static/produtos
-                    saved_paths.append(f"/static/produtos/{unique_name}")
+                    
+                    # Salva no banco APENAS o nome do arquivo para o Flask achar no static
+                    saved_paths.append(unique_name)
             
             urls_final = ",".join(saved_paths)
             novo = Product(name=nome, description=desc, image_urls=urls_final, price=preco)
@@ -108,7 +103,7 @@ def admin():
             return redirect(url_for('admin'))
         except Exception as e:
             db.session.rollback()
-            return f"Erro: {e}"
+            return f"Erro ao salvar: {e}"
     return render_template('admin.html', produtos=Product.query.all())
 
 @app.route('/delete/<int:id>')
