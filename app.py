@@ -5,11 +5,10 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_blindado_2026'
+app.secret_key = 'france_decor_blindado_definitivo_2026'
 
-# --- CONFIGURAÇÃO DO BANCO DE DADOS ---
+# --- CONFIGURAÇÃO DO BANCO DE DADOS (LOCAL NO VS CODE) ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-# O banco de dados fica na raiz da pasta FranceDecor para facilitar o envio
 db_path = os.path.join(basedir, 'france_decor.db')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
@@ -55,17 +54,17 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Credenciais inválidas.')
+        flash('Login inválido.')
     return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
     if request.method == 'POST':
-        # VERIFICAÇÃO BLINDADA: Se estiver na Vercel, bloqueia a gravação para evitar o erro 500
+        # BLINDAGEM CONTRA ERRO 500 NA VERCEL
         if os.environ.get('VERCEL'):
             return "ERRO: A Vercel não permite cadastrar produtos online. Cadastre no seu VS Code local e faça o PUSH do arquivo 'france_decor.db'."
-
+        
         try:
             nome = request.form.get('name')
             p_raw = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
@@ -79,7 +78,7 @@ def admin():
             return redirect(url_for('admin'))
         except Exception as e:
             db.session.rollback()
-            return f"Erro ao gravar no VS Code: {e}"
+            return f"Erro ao gravar: {e}"
             
     return render_template('admin.html', produtos=Product.query.all())
 
@@ -89,7 +88,7 @@ def edit_product(id):
     p = Product.query.get_or_404(id)
     if request.method == 'POST':
         if os.environ.get('VERCEL'):
-            return "ERRO: Edições devem ser feitas no VS Code local."
+            return "ERRO: Alterações devem ser feitas no VS Code local."
             
         p.name = request.form.get('name')
         p_val = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
