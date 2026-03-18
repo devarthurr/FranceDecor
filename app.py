@@ -6,31 +6,42 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2026_full_pack'
+app.secret_key = 'france_decor_final_fix_2026'
 
-# --- CONFIGURAÇÃO DE PASTAS ---
+# --- CONFIGURAÇÃO DE PASTAS (HÍBRIDA) ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-# Onde as fotos dos produtos ficarão guardadas no seu VS Code
-UPLOAD_FOLDER = os.path.join(basedir, 'static', 'produtos')
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+
+# Se estiver na Vercel, usa a pasta /tmp, se for no PC, usa a pasta do VS Code
+if os.environ.get('VERCEL'):
+    UPLOAD_FOLDER = '/tmp'
+    db_path = '/tmp/france_decor.db'
+else:
+    UPLOAD_FOLDER = os.path.join(basedir, 'static', 'produtos')
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+    
+    db_dir = os.path.join(basedir, 'database_file')
+    if not os.path.exists(db_dir): os.makedirs(db_dir)
+    db_path = os.path.join(db_dir, 'france_decor.db')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
 
-# --- BANCO DE DADOS (PASTA database_file) ---
-db_dir = os.path.join(basedir, 'database_file')
-if not os.path.exists(db_dir): os.makedirs(db_dir)
-db_path = os.path.join(db_dir, 'france_decor.db')
+# --- BANCO DE DADOS ---
+database_url = os.environ.get('DATABASE_URL')
+if database_url:
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(app)
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# MODELOS
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -80,7 +91,6 @@ def admin():
             preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
             desc = request.form.get('description')
             
-            # Salva as fotos enviadas
             files = request.files.getlist('fotos')
             saved_paths = []
             for file in files:
@@ -88,6 +98,7 @@ def admin():
                     filename = secure_filename(file.filename)
                     unique_name = f"{secure_filename(nome)}_{filename}"
                     file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
+                    # No site, o caminho sempre aponta para static/produtos
                     saved_paths.append(f"/static/produtos/{unique_name}")
             
             urls_final = ",".join(saved_paths)
