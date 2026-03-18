@@ -5,21 +5,24 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_neon_2026'
+app.secret_key = 'france_decor_resgate_v5_final'
 
-# --- CONFIGURAÇÃO DA DATABASE (NEON) ---
-# Aqui usamos a sua URL do Neon que você forneceu
-NEON_URL = "postgresql://neondb_owner:npg_FWjUN2XYlku0@ep-quiet-sound-aco0b99g-pooler.sa-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require"
+# --- CONFIGURAÇÃO DE BANCO DE DADOS ---
+basedir = os.path.abspath(os.path.dirname(__file__))
 
-# A Vercel prefere o prefixo postgresql:// em vez de postgres://
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', NEON_URL).replace("postgresql://neondb_owner:npg_FWjUN2XYlku0@ep-quiet-sound-aco0b99g-pooler.sa-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require", "postgresql://neondb_owner:npg_FWjUN2XYlku0@ep-quiet-sound-aco0b99g-pooler.sa-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require", 1)
+if os.environ.get('VERCEL'):
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/france_decor.db'
+else:
+    db_dir = os.path.join(basedir, 'database_file')
+    if not os.path.exists(db_dir): os.makedirs(db_dir)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'france_decor.db')
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(app)
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- MODELOS ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -30,13 +33,14 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Float, default=0.0)
-    image_urls = db.Column(db.Text) # Links das imagens separados por vírgula
+    image_urls = db.Column(db.Text)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 # --- ROTAS ---
+
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -45,7 +49,11 @@ def index():
 @app.route('/produto/<int:id>')
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
-    images = [img.strip() for img in p.image_urls.split(',') if p.image_urls and img.strip()]
+    # CORREÇÃO: Se image_urls estiver vazio ou None, cria uma lista vazia para não dar erro
+    if p.image_urls:
+        images = [img.strip() for img in p.image_urls.split(',') if img.strip()]
+    else:
+        images = []
     return render_template('produto.html', p=p, images=images)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -55,7 +63,7 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Usuário ou senha inválidos.')
+        flash('Erro no login.')
     return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])
@@ -71,11 +79,10 @@ def admin():
             novo = Product(name=nome, description=desc, image_urls=links, price=preco)
             db.session.add(novo)
             db.session.commit()
-            flash('Produto cadastrado com sucesso no Neon!')
             return redirect(url_for('admin'))
         except Exception as e:
             db.session.rollback()
-            return f"Erro ao salvar: {e}"
+            return f"Erro: {e}"
     return render_template('admin.html', produtos=Product.query.all())
 
 @app.route('/admin/edit/<int:id>', methods=['GET', 'POST'])
@@ -84,7 +91,7 @@ def edit_product(id):
     p = Product.query.get_or_404(id)
     if request.method == 'POST':
         p.name = request.form.get('name')
-        p_val = request.form.get('price').replace(',', '.')
+        p_val = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
         p.price = float(p_val)
         p.image_urls = request.form.get('image_urls').strip()
         p.description = request.form.get('description')
@@ -95,18 +102,21 @@ def edit_product(id):
 @app.route('/delete/<int:id>')
 @login_required
 def delete(id):
-    p = Product.query.get(id); db.session.delete(p); db.session.commit()
+    p = Product.query.get(id)
+    if p:
+        db.session.delete(p)
+        db.session.commit()
     return redirect(url_for('admin'))
 
 @app.route('/logout')
 def logout():
-    logout_user(); return redirect(url_for('index'))
+    logout_user()
+    return redirect(url_for('index'))
 
-# Cria as tabelas no Neon automaticamente
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
-        db.session.add(User(username='admin', password=generate_password_hash('admin123')))
+        db.session.add(User(username='admin', password=generate_password_hash('password123')))
         db.session.commit()
 
 if __name__ == '__main__':
