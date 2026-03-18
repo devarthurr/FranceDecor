@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container py-4 px-3">
-        <a href="/" class="btn btn-link text-decoration-none fw-bold p-0 mb-3"><i class="bi bi-arrow-left"></i> Voltar</a>
+        <a href="/" class="btn btn-link text-decoration-none fw-bold p-0 mb-3 text-primary"><i class="bi bi-arrow-left"></i> Voltar</a>
         <div class="row g-4">
             <div class="col-md-7">
                 <div id="pCar" class="carousel slide shadow rounded-4 overflow-hidden" data-bs-ride="false">
@@ -41,8 +41,8 @@
                 <div class="price-big mb-3">
                     {% if p.price > 0 %} R$ {{ "%.2f"|format(p.price) }} {% else %} Consultar valor {% endif %}
                 </div>
-                <p class="text-muted mb-4">{{ p.description }}</p>
-                <a href="https://wa.me/5511999999999?text=Interesse em: {{ p.name }}" class="btn-wa shadow-sm">
+                <p class="text-muted mb-4" style="white-space: pre-wrap;">{{ p.description }}</p>
+                <a href="https://wa.me/5511999999999?text=Gostaria de saber mais sobre: {{ p.name }}" class="btn-wa shadow-sm">
                     <i class="bi bi-whatsapp"></i> Pedir pelo WhatsApp
                 </a>
             </div>

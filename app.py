@@ -5,20 +5,113 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_permanente_2026'
+app.secret_key = 'france_decor_2026_final_fix'
 
-# --- CONFIGURAÇÃO ANTIBLOQUEIO ---
+# --- CONFIGURAÇÃO DE BANCO DE DADOS PERMANENTE E ANTI-BLOQUEIO ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-db_path = os.path.join(basedir, 'database_france.db')
+data_dir = os.path.join(basedir, 'data')
 
-# Forçamos o Flask a usar o caminho absoluto e removemos restrições de leitura
+# Cria a pasta 'data' se não existir para evitar erros de permissão do Windows
+if not os.path.exists(data_dir):
+    os.makedirs(data_dir)
+
+db_path = os.path.join(data_dir, 'database_france.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# O timeout de 30 evita que o banco trave quando você cola muitos links
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 30}}
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# ... (Mantenha o restante dos seus modelos e rotas como estão)
+# MODELOS
+class User(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    price = db.Column(db.Float, default=0.0)
+    image_urls = db.Column(db.Text) # URLs separadas por vírgula
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# --- ROTAS PÚBLICAS ---
+@app.route('/')
+def index():
+    produtos = Product.query.order_by(Product.id.desc()).all()
+    return render_template('index.html', produtos=produtos)
+
+@app.route('/produto/<int:id>')
+def produto_detalhes(id):
+    p = Product.query.get_or_404(id)
+    images = p.image_urls.split(',') if p.image_urls else []
+    return render_template('produto.html', p=p, images=images)
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        user = User.query.filter_by(username=request.form.get('username')).first()
+        if user and check_password_hash(user.password, request.form.get('password')):
+            login_user(user)
+            return redirect(url_for('admin'))
+        flash('Usuário ou senha inválidos.')
+    return render_template('login.html')
+
+# --- ROTAS ADMIN ---
+@app.route('/admin', methods=['GET', 'POST'])
+@login_required
+def admin():
+    if request.method == 'POST':
+        try:
+            nome = request.form.get('name')
+            preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+            urls = request.form.get('image_urls').replace('\n', '').strip()
+            novo = Product(name=nome, description=request.form.get('description'), image_urls=urls, price=preco)
+            db.session.add(novo)
+            db.session.commit()
+            return redirect(url_for('admin'))
+        except Exception as e:
+            db.session.rollback()
+            return f"Erro ao salvar: {e}"
+    return render_template('admin.html', produtos=Product.query.all())
+
+@app.route('/admin/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_product(id):
+    p = Product.query.get_or_404(id)
+    if request.method == 'POST':
+        p.name = request.form.get('name')
+        p.description = request.form.get('description')
+        p.image_urls = request.form.get('image_urls').replace('\n', '').strip()
+        p.price = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+        db.session.commit()
+        return redirect(url_for('admin'))
+    return render_template('edit.html', p=p)
+
+@app.route('/delete/<int:id>')
+@login_required
+def delete(id):
+    p = Product.query.get(id)
+    db.session.delete(p)
+    db.session.commit()
+    return redirect(url_for('admin'))
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return redirect(url_for('index'))
+
+with app.app_context():
+    db.create_all()
+    if not User.query.filter_by(username='admin').first():
+        db.session.add(User(username='admin', password=generate_password_hash('password123')))
+        db.session.commit()
+
+if __name__ == '__main__':
+    app.run(debug=True)

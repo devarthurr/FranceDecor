@@ -14,8 +14,8 @@
         .brand-name { color: white; font-weight: 800; font-size: 1.8rem; margin: 0; line-height: 1; }
         .brand-slogan { color: rgba(255,255,255,0.8); font-size: 0.9rem; }
         .insta-link { color: white; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .card-product { border: none; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        .img-box { height: 250px; display: flex; align-items: center; justify-content: center; background: #fff; padding: 10px; }
+        .card-product { border: none; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: 0.3s; }
+        .img-box { height: 250px; display: flex; align-items: center; justify-content: center; background: #fff; padding: 10px; border-radius: 15px; }
         .img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .price-tag { color: var(--azul); font-weight: 800; font-size: 1.2rem; }
         .admin-lock { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.4); color: white; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; z-index: 1000; }
@@ -37,11 +37,11 @@
         </div>
     </nav>
 
-    <div class="container pb-5 px-3">
+    <div class="container pb-5 px-3 text-center">
         <div class="row row-cols-1 row-cols-md-3 g-4">
             {% for p in produtos %}
             <div class="col">
-                <div class="card card-product h-100 p-2 text-center">
+                <div class="card card-product h-100 p-2">
                     <a href="/produto/{{p.id}}" class="text-decoration-none text-dark">
                         <div class="img-box">
                             {% set first_img = p.image_urls.split(',')[0] if p.image_urls else '' %}
