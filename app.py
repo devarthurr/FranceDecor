@@ -5,14 +5,13 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2026_key'
+app.secret_key = 'france_decor_resgate_2026'
 
-# Configuração de Banco de Dados
+# Configuração de Banco de Dados Robusta
 database_url = os.environ.get('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-# Se não houver Postgres, usa SQLite na pasta atual de forma simples
 if not database_url:
     basedir = os.path.abspath(os.path.dirname(__file__))
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'catalogo.db')
