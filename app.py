@@ -5,23 +5,23 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_vercel_2026'
+app.secret_key = 'france_decor_2026_full_edition'
 
-# --- CONFIGURAÇÃO DE BANCO HÍBRIDA (PC + VERCEL) ---
-if os.environ.get('VERCEL'):
-    # Se estiver na Vercel, usa a pasta /tmp (única permitida)
-    db_path = '/tmp/france_decor.db'
-else:
-    # Se estiver no seu PC, usa a pasta de usuário para não sumir
+# --- CONFIGURAÇÃO DE BANCO DE DADOS PERMANENTE ---
+# Prioriza o banco da Vercel (Postgres), se não houver, usa o local seguro.
+database_url = os.environ.get('DATABASE_URL')
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+if not database_url:
     home_dir = os.path.expanduser("~")
-    db_dir = os.path.join(home_dir, ".francedecor")
+    db_dir = os.path.join(home_dir, ".francedecor_data")
     if not os.path.exists(db_dir):
         os.makedirs(db_dir)
-    db_path = os.path.join(db_dir, 'france_decor_v10.db')
+    database_url = 'sqlite:///' + os.path.join(db_dir, 'france_v11.db')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 30}}
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -44,7 +44,7 @@ class Product(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- ROTAS ---
+# --- ROTAS PÚBLICAS ---
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -63,18 +63,19 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Acesso negado!')
+        flash('Usuário ou senha inválidos.')
     return render_template('login.html')
 
+# --- ROTAS ADMIN ---
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
     if request.method == 'POST':
         try:
             nome = request.form.get('name')
-            preco_str = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
+            preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
             urls = request.form.get('image_urls').replace('\n', '').strip()
-            novo = Product(name=nome, description=request.form.get('description'), image_urls=urls, price=float(preco_str))
+            novo = Product(name=nome, description=request.form.get('description'), image_urls=urls, price=preco)
             db.session.add(novo)
             db.session.commit()
             return redirect(url_for('admin'))
@@ -91,8 +92,7 @@ def edit_product(id):
         p.name = request.form.get('name')
         p.description = request.form.get('description')
         p.image_urls = request.form.get('image_urls').replace('\n', '').strip()
-        preco_str = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
-        p.price = float(preco_str)
+        p.price = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
         db.session.commit()
         return redirect(url_for('admin'))
     return render_template('edit.html', p=p)
@@ -110,7 +110,6 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
-# INICIALIZAÇÃO
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
