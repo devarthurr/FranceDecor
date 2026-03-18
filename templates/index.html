@@ -2,71 +2,86 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FRANCE DECOR | Premium</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FRANCE DECOR | Catálogo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         :root { --azul: #0047BB; --gold: #D4AF37; }
-        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', system-ui, sans-serif; overflow-x: hidden; }
         
+        /* Navbar Compacta e Responsiva */
         .navbar { 
-            background: linear-gradient(rgba(0, 71, 187, 0.95), rgba(0, 46, 140, 0.95)); 
-            padding: 40px 0;
+            background: linear-gradient(rgba(0, 71, 187, 0.98), rgba(0, 46, 140, 0.98)); 
+            padding: 20px 0;
             border-bottom: 3px solid var(--gold);
         }
         .logo-main { 
-            height: 160px; /* Logo Aumentada */
-            border-radius: 25px; 
-            border: 5px solid white; 
-            box-shadow: 0 15px 30px rgba(0,0,0,0.3);
-            transition: 0.5s;
+            height: 100px; /* Reduzi um pouco para caber melhor no celular */
+            width: auto;
+            border-radius: 15px; 
+            border: 3px solid white; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
         }
-        .logo-main:hover { transform: rotate(2deg) scale(1.05); }
+        @media (max-width: 576px) {
+            .logo-main { height: 80px; } /* Menor ainda no celular */
+            h1 { font-size: 1.5rem !important; }
+        }
 
+        /* Card Ajustado para Telas Menores */
         .card-product { 
-            border: none; border-radius: 35px; background: white; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.05); transition: 0.4s;
-            border: 1px solid rgba(0,0,0,0.03);
+            border: none; 
+            border-radius: 20px; 
+            background: white; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transition: 0.3s;
+            margin-bottom: 10px;
         }
-        .card-product:hover { transform: translateY(-15px); box-shadow: 0 20px 50px rgba(0,71,187,0.1); }
-        
-        /* Botões no Topo do Card */
-        .social-buttons { display: flex; gap: 10px; margin-bottom: 20px; }
-        .btn-social {
-            flex: 1; padding: 12px; border-radius: 15px; color: white;
-            text-decoration: none; font-weight: 800; font-size: 0.9rem;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
+        .img-product {
+            width: 100%;
+            height: 220px; /* Altura fixa para não quebrar o layout */
+            object-fit: cover;
+            border-radius: 15px;
         }
-        .btn-wa { background-color: #25D366; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3); }
-        .btn-ig { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #bc1888); box-shadow: 0 4px 15px rgba(220, 39, 67, 0.3); }
 
-        .price-tag { color: var(--azul); font-size: 2rem; font-weight: 900; letter-spacing: -1px; }
-        .admin-float { position: fixed; bottom: 30px; right: 30px; z-index: 1000; }
+        /* Botões Sociais Compactos */
+        .social-buttons { display: flex; gap: 8px; margin-bottom: 12px; }
+        .btn-social {
+            flex: 1; padding: 10px 5px; border-radius: 10px; color: white;
+            text-decoration: none; font-weight: 700; font-size: 0.75rem; /* Fonte menor para mobile */
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            white-space: nowrap;
+        }
+        .btn-wa { background-color: #25D366; }
+        .btn-ig { background: linear-gradient(45deg, #f09433, #dc2743, #bc1888); }
+
+        .price-tag { color: var(--azul); font-size: 1.4rem; font-weight: 800; }
+        .admin-float { position: fixed; bottom: 15px; right: 15px; z-index: 1000; }
+        .admin-float .btn { font-size: 0.8rem; padding: 8px 15px; }
     </style>
 </head>
 <body>
 
-    <nav class="navbar navbar-dark mb-5 text-center">
-        <div class="container">
-            <img src="{{ url_for('static', filename='logo.jpg') }}" class="logo-main mb-3">
-            <h1 class="text-white fw-bold display-4">FRANCE DECOR</h1>
-            <p class="text-white-50 fs-5">Exclusividade e Design</p>
+    <nav class="navbar navbar-dark mb-4 text-center">
+        <div class="container px-3">
+            <img src="{{ url_for('static', filename='logo.jpg') }}" class="logo-main mb-2">
+            <h1 class="text-white fw-bold mb-0">FRANCE DECOR</h1>
+            <p class="text-white-50 small mb-0">Decoração Premium</p>
         </div>
     </nav>
 
-    <div class="container pb-5">
-        <div class="row row-cols-1 row-cols-md-3 g-5">
+    <div class="container px-3 pb-5">
+        <div class="row row-cols-1 row-cols-md-3 g-3">
             {% for p in produtos %}
             <div class="col">
-                <div class="card card-product h-100 p-4">
-                    <img src="{{ p.image_url }}" class="rounded-5 mb-4 shadow-sm" style="height: 320px; object-fit: cover;">
+                <div class="card card-product h-100 p-3">
+                    <img src="{{ p.image_url }}" class="img-product mb-3 shadow-sm">
                     
                     <div class="text-center">
-                        <div class="price-tag mb-3">R$ {{ "%.2f"|format(p.price) }}</div>
+                        <div class="price-tag mb-2">R$ {{ "%.2f"|format(p.price) }}</div>
                         
                         <div class="social-buttons">
-                            <a href="https://wa.me/5511999999999?text=Olá! Vi o produto {{ p.name }} no catálogo." class="btn-social btn-wa">
+                            <a href="https://wa.me/5511999999999?text=Interesse no produto: {{ p.name }}" class="btn-social btn-wa">
                                 <i class="bi bi-whatsapp"></i> WHATSAPP
                             </a>
                             <a href="https://www.instagram.com/_france.decor/" target="_blank" class="btn-social btn-ig">
@@ -74,8 +89,8 @@
                             </a>
                         </div>
 
-                        <h4 class="fw-bold text-dark">{{ p.name }}</h4>
-                        <p class="text-muted">{{ p.description }}</p>
+                        <h6 class="fw-bold text-dark mb-1">{{ p.name }}</h6>
+                        <p class="text-muted mb-0" style="font-size: 0.85rem;">{{ p.description }}</p>
                     </div>
                 </div>
             </div>
@@ -84,8 +99,8 @@
     </div>
 
     <div class="admin-float">
-        <a href="/login" class="btn btn-dark rounded-pill px-4 py-2 shadow-lg fw-bold">
-            <i class="bi bi-shield-lock"></i> ADMIN
+        <a href="/login" class="btn btn-dark rounded-pill shadow-lg opacity-75">
+            <i class="bi bi-lock"></i>
         </a>
     </div>
 
