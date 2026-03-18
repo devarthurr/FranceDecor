@@ -5,16 +5,20 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2026_safe_system'
+app.secret_key = 'france_decor_vercel_2026'
 
-# --- CONFIGURAÇÃO DE ARMAZENAMENTO BLINDADO ---
-# Criando o banco na pasta de perfil do usuário para evitar erros de permissão do Windows
-home_dir = os.path.expanduser("~")
-db_dir = os.path.join(home_dir, ".francedecor")
-if not os.path.exists(db_dir):
-    os.makedirs(db_dir)
+# --- CONFIGURAÇÃO DE BANCO HÍBRIDA (PC + VERCEL) ---
+if os.environ.get('VERCEL'):
+    # Se estiver na Vercel, usa a pasta /tmp (única permitida)
+    db_path = '/tmp/france_decor.db'
+else:
+    # Se estiver no seu PC, usa a pasta de usuário para não sumir
+    home_dir = os.path.expanduser("~")
+    db_dir = os.path.join(home_dir, ".francedecor")
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir)
+    db_path = os.path.join(db_dir, 'france_decor_v10.db')
 
-db_path = os.path.join(db_dir, 'france_decor_v10.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 30}}
@@ -40,7 +44,7 @@ class Product(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- ROTAS PÚBLICAS ---
+# --- ROTAS ---
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -62,7 +66,6 @@ def login():
         flash('Acesso negado!')
     return render_template('login.html')
 
-# --- ROTAS ADMIN ---
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
@@ -70,16 +73,14 @@ def admin():
         try:
             nome = request.form.get('name')
             preco_str = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
-            preco = float(preco_str)
             urls = request.form.get('image_urls').replace('\n', '').strip()
-            
-            novo = Product(name=nome, description=request.form.get('description'), image_urls=urls, price=preco)
+            novo = Product(name=nome, description=request.form.get('description'), image_urls=urls, price=float(preco_str))
             db.session.add(novo)
             db.session.commit()
             return redirect(url_for('admin'))
         except Exception as e:
             db.session.rollback()
-            return f"Erro ao salvar: {e}"
+            return f"Erro: {e}"
     return render_template('admin.html', produtos=Product.query.all())
 
 @app.route('/admin/edit/<int:id>', methods=['GET', 'POST'])
