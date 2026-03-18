@@ -5,21 +5,19 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2026_final_safe'
+app.secret_key = 'france_decor_2026_safe_system'
 
-# --- CONFIGURAÇÃO DE BANCO DE DADOS BLINDADA ---
-basedir = os.path.abspath(os.path.dirname(__file__))
-data_dir = os.path.join(basedir, 'data')
+# --- CONFIGURAÇÃO DE ARMAZENAMENTO BLINDADO ---
+# Criando o banco na pasta de perfil do usuário para evitar erros de permissão do Windows
+home_dir = os.path.expanduser("~")
+db_dir = os.path.join(home_dir, ".francedecor")
+if not os.path.exists(db_dir):
+    os.makedirs(db_dir)
 
-if not os.path.exists(data_dir):
-    os.makedirs(data_dir)
-
-db_path = os.path.join(data_dir, 'database_france.db')
+db_path = os.path.join(db_dir, 'france_decor_v10.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    "connect_args": {"timeout": 30}
-}
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 30}}
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -36,13 +34,13 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Float, default=0.0)
-    image_urls = db.Column(db.Text) # URLs separadas por vírgula
+    image_urls = db.Column(db.Text)
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- ROTAS ---
+# --- ROTAS PÚBLICAS ---
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -51,8 +49,8 @@ def index():
 @app.route('/produto/<int:id>')
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
-    images = p.image_urls.split(',') if p.image_urls else []
-    return render_template('produto.html', p=p, images=[img.strip() for img in images])
+    images = [img.strip() for img in p.image_urls.split(',')] if p.image_urls else []
+    return render_template('produto.html', p=p, images=images)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -61,17 +59,20 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Acesso negado.')
+        flash('Acesso negado!')
     return render_template('login.html')
 
+# --- ROTAS ADMIN ---
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
     if request.method == 'POST':
         try:
             nome = request.form.get('name')
-            preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+            preco_str = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
+            preco = float(preco_str)
             urls = request.form.get('image_urls').replace('\n', '').strip()
+            
             novo = Product(name=nome, description=request.form.get('description'), image_urls=urls, price=preco)
             db.session.add(novo)
             db.session.commit()
@@ -89,7 +90,8 @@ def edit_product(id):
         p.name = request.form.get('name')
         p.description = request.form.get('description')
         p.image_urls = request.form.get('image_urls').replace('\n', '').strip()
-        p.price = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+        preco_str = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
+        p.price = float(preco_str)
         db.session.commit()
         return redirect(url_for('admin'))
     return render_template('edit.html', p=p)
@@ -107,6 +109,7 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
+# INICIALIZAÇÃO
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():

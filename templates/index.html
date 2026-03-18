@@ -8,29 +8,32 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         :root { --azul: #0047BB; --gold: #D4AF37; }
-        body { background-color: #f8f9fa; }
-        .navbar { background-color: var(--azul); padding: 15px 0; border-bottom: 3px solid var(--gold); }
-        .logo-nav { height: 85px; border-radius: 12px; border: 2px solid white; }
-        .brand-name { color: white; font-weight: 800; font-size: 1.8rem; margin: 0; }
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        .navbar { background-color: var(--azul); padding: 15px 0; border-bottom: 4px solid var(--gold); }
+        .logo-nav { height: 80px; border-radius: 15px; border: 2px solid white; background: white; }
+        .brand-name { color: white; font-weight: 800; font-size: 1.8rem; margin: 0; line-height: 1; }
+        .brand-slogan { color: rgba(255,255,255,0.8); font-size: 0.9rem; }
         .insta-link { color: white; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .card-product { border: none; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); transition: 0.3s; }
-        .img-box { height: 250px; display: flex; align-items: center; justify-content: center; background: white; padding: 10px; border-radius: 15px; }
+        .card-product { border: none; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: 0.3s; }
+        .card-product:hover { transform: translateY(-5px); }
+        .img-box { height: 250px; display: flex; align-items: center; justify-content: center; background: #fff; padding: 10px; border-radius: 15px; }
         .img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .admin-lock { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.5); color: white; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+        .price-tag { color: var(--azul); font-weight: 800; font-size: 1.2rem; }
+        .admin-lock { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.4); color: white; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; z-index: 1000; }
     </style>
 </head>
 <body>
-    <nav class="navbar mb-4">
+    <nav class="navbar mb-4 sticky-top">
         <div class="container d-flex justify-content-between align-items-center">
             <a class="navbar-brand d-flex align-items-center gap-3" href="/">
-                <img src="{{ url_for('static', filename='logo.jpg') }}" class="logo-nav">
+                <img src="{{ url_for('static', filename='logo.jpg') }}" class="logo-nav shadow-sm">
                 <div>
                     <h1 class="brand-name">FRANCE DECOR</h1>
-                    <small class="text-white-50">Artes em festas</small>
+                    <span class="brand-slogan text-uppercase">Artes em festas</span>
                 </div>
             </a>
             <a href="https://www.instagram.com/_france.decor/" target="_blank" class="insta-link">
-                <i class="bi bi-instagram fs-5"></i> Instagram
+                <i class="bi bi-instagram fs-4"></i>
             </a>
         </div>
     </nav>
@@ -38,19 +41,19 @@
     <div class="container pb-5 px-3">
         <div class="row row-cols-1 row-cols-md-3 g-4">
             {% for p in produtos %}
-            <div class="col text-center">
-                <div class="card card-product h-100 p-3">
+            <div class="col">
+                <div class="card card-product h-100 p-2 text-center">
                     <a href="/produto/{{p.id}}" class="text-decoration-none text-dark">
-                        <div class="img-box">
+                        <div class="img-box mb-2">
                             {% set first_img = p.image_urls.split(',')[0] if p.image_urls else '' %}
                             <img src="{{ first_img.strip() }}">
                         </div>
-                        <h6 class="fw-bold mt-3">{{ p.name }}</h6>
-                        <div class="text-primary fw-bold mb-3">
+                        <h6 class="fw-bold">{{ p.name }}</h6>
+                        <div class="price-tag mb-2">
                             {% if p.price > 0 %} R$ {{ "%.2f"|format(p.price) }} {% else %} Consultar valor {% endif %}
                         </div>
                     </a>
-                    <a href="https://wa.me/5511999999999?text=Interesse em: {{ p.name }}" class="btn btn-success rounded-pill fw-bold">
+                    <a href="https://wa.me/5511999999999?text=Vi o produto {{ p.name }} no catálogo" class="btn btn-success w-100 rounded-pill fw-bold py-2">
                         <i class="bi bi-whatsapp"></i> WhatsApp
                     </a>
                 </div>
