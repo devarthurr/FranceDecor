@@ -5,16 +5,14 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_resgate_v4_fixed'
+app.secret_key = 'france_decor_resgate_v5_final'
 
-# --- CONFIGURAÇÃO DE BANCO DE DADOS (ANTI-CRASH VERCEL) ---
+# --- CONFIGURAÇÃO DE BANCO DE DADOS ---
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 if os.environ.get('VERCEL'):
-    # Na Vercel, o SQLite precisa ficar na pasta /tmp para não dar erro 500
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/france_decor.db'
 else:
-    # No seu PC, ele cria a pasta database_file
     db_dir = os.path.join(basedir, 'database_file')
     if not os.path.exists(db_dir): os.makedirs(db_dir)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'france_decor.db')
@@ -25,7 +23,6 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- MODELOS (CORRIGIDOS) ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -52,7 +49,11 @@ def index():
 @app.route('/produto/<int:id>')
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
-    images = [img.strip() for img in p.image_urls.split(',') if img.strip()]
+    # CORREÇÃO: Se image_urls estiver vazio ou None, cria uma lista vazia para não dar erro
+    if p.image_urls:
+        images = [img.strip() for img in p.image_urls.split(',') if img.strip()]
+    else:
+        images = []
     return render_template('produto.html', p=p, images=images)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -62,7 +63,7 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Usuário ou senha incorretos.')
+        flash('Erro no login.')
     return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])
@@ -71,7 +72,8 @@ def admin():
     if request.method == 'POST':
         try:
             nome = request.form.get('name')
-            preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+            p_raw = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
+            preco = float(p_raw)
             links = request.form.get('image_urls').strip()
             desc = request.form.get('description')
             novo = Product(name=nome, description=desc, image_urls=links, price=preco)
