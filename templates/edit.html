@@ -7,9 +7,9 @@
         <form method="POST" enctype="multipart/form-data">
             <input type="text" name="name" value="{{p.name}}" class="form-control mb-3" required>
             <input type="text" name="price" value="{{p.price}}" class="form-control mb-3">
-            <label class="small fw-bold">Substituir Fotos (opcional):</label>
+            <label class="small fw-bold text-primary">Substituir Fotos (opcional):</label>
             <input type="file" name="fotos" class="form-control mb-2" multiple>
-            <textarea name="links_manuais" placeholder="Ou novos links externos" class="form-control mb-3" rows="2"></textarea>
+            <textarea name="links_externos" placeholder="Ou novos links externos" class="form-control mb-3" rows="2"></textarea>
             <textarea name="description" class="form-control mb-4" rows="4">{{p.description}}</textarea>
             <button class="btn btn-primary w-100 fw-bold">SALVAR ALTERAÇÕES</button>
             <a href="/admin" class="btn btn-link w-100 text-muted mt-2">Cancelar</a>

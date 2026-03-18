@@ -6,29 +6,31 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_final_2026_pro'
+app.secret_key = 'france_decor_final_ultra_2026'
 
-# --- CONFIGURAÇÃO DE PASTAS ---
+# --- CONFIGURAÇÃO DE AMBIENTE (PC vs VERCEL) ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_FOLDER = os.path.join(basedir, 'static', 'produtos')
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+IS_VERCEL = "VERCEL" in os.environ
+
+if IS_VERCEL:
+    # Configuração para Vercel (Não tenta criar pastas locais)
+    UPLOAD_FOLDER = '/tmp'
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:////tmp/france_decor.db')
+else:
+    # Configuração para seu PC (VS Code)
+    UPLOAD_FOLDER = os.path.join(basedir, 'static', 'produtos')
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+    
+    db_dir = os.path.join(basedir, 'database_file')
+    if not os.path.exists(db_dir): 
+        os.makedirs(db_dir)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'france_decor_v3.db')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
-
-# --- BANCO DE DADOS (HÍBRIDO) ---
-if os.environ.get('VERCEL'):
-    db_path = '/tmp/france_decor.db'
-else:
-    db_dir = os.path.join(basedir, 'database_file')
-    if not os.path.exists(db_dir): os.makedirs(db_dir)
-    db_path = os.path.join(db_dir, 'france_decor_v3.db')
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
+db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -49,10 +51,7 @@ class Product(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
-# --- ROTAS PÚBLICAS ---
+# --- ROTAS ---
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -73,7 +72,6 @@ def login():
             return redirect(url_for('admin'))
     return render_template('login.html')
 
-# --- ROTAS ADMIN ---
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
@@ -83,25 +81,24 @@ def admin():
             preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
             desc = request.form.get('description')
             
-            # Processa arquivos upados e links manuais
+            # 1. Salva arquivos de Upload
             files = request.files.getlist('fotos')
-            saved_paths = []
+            image_list = []
             for file in files:
-                if file and allowed_file(file.filename):
+                if file and file.filename != '':
                     filename = secure_filename(file.filename)
-                    unique_name = f"up_{id(file)}_{filename}"
+                    unique_name = f"up_{nome.replace(' ', '_')}_{filename}"
                     file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
-                    saved_paths.append(f"/static/produtos/{unique_name}")
+                    image_list.append(f"/static/produtos/{unique_name}")
             
-            links_manuais = request.form.get('links_manuais')
-            if links_manuais:
-                saved_paths.append(links_manuais)
+            # 2. Adiciona links externos se houver
+            links = request.form.get('links_externos')
+            if links:
+                image_list.extend([l.strip() for l in links.split(',')])
 
-            urls_final = ",".join(saved_paths)
-            novo = Product(name=nome, description=desc, image_urls=urls_final, price=preco)
+            novo = Product(name=nome, description=desc, image_urls=",".join(image_list), price=preco)
             db.session.add(novo)
             db.session.commit()
-            flash("Produto criado!")
             return redirect(url_for('admin'))
         except Exception as e:
             return f"Erro: {e}"
@@ -116,22 +113,21 @@ def edit_product(id):
         p.price = float(request.form.get('price').replace(',', '.'))
         p.description = request.form.get('description')
         
-        # Se upar novas fotos, substitui. Se deixar vazio, mantém as antigas.
+        # Opcional: Novas fotos
         files = request.files.getlist('fotos')
-        new_paths = []
+        new_images = []
         for file in files:
-            if file and allowed_file(file.filename):
+            if file and file.filename != '':
                 filename = secure_filename(file.filename)
-                unique_name = f"edit_{id(file)}_{filename}"
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
-                new_paths.append(f"/static/produtos/{unique_name}")
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                new_images.append(f"/static/produtos/{filename}")
         
-        links_manuais = request.form.get('links_manuais')
-        if links_manuais:
-            new_paths.append(links_manuais)
+        links = request.form.get('links_externos')
+        if links:
+            new_images.extend([l.strip() for l in links.split(',')])
             
-        if new_paths:
-            p.image_urls = ",".join(new_paths)
+        if new_images:
+            p.image_urls = ",".join(new_images)
             
         db.session.commit()
         return redirect(url_for('admin'))
@@ -140,12 +136,15 @@ def edit_product(id):
 @app.route('/delete/<int:id>')
 @login_required
 def delete(id):
-    p = Product.query.get(id); db.session.delete(p); db.session.commit()
+    p = Product.query.get(id)
+    db.session.delete(p)
+    db.session.commit()
     return redirect(url_for('admin'))
 
 @app.route('/logout')
 def logout():
-    logout_user(); return redirect(url_for('index'))
+    logout_user()
+    return redirect(url_for('index'))
 
 with app.app_context():
     db.create_all()
