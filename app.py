@@ -3,38 +3,30 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'france_decor_final_ultra_2026'
 
-# --- CONFIGURAÇÃO DE AMBIENTE (PC vs VERCEL) ---
+# --- CONFIGURAÇÃO DE BANCO DE DADOS (PC + VERCEL) ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-IS_VERCEL = "VERCEL" in os.environ
 
-if IS_VERCEL:
-    # Configuração para Vercel (Não tenta criar pastas locais)
-    UPLOAD_FOLDER = '/tmp'
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:////tmp/france_decor.db')
+if os.environ.get('VERCEL'):
+    # Na Vercel, usamos a pasta /tmp para o SQLite não quebrar
+    db_path = '/tmp/france_decor.db'
 else:
-    # Configuração para seu PC (VS Code)
-    UPLOAD_FOLDER = os.path.join(basedir, 'static', 'produtos')
-    if not os.path.exists(UPLOAD_FOLDER):
-        os.makedirs(UPLOAD_FOLDER)
-    
+    # No seu computador, cria uma pasta segura
     db_dir = os.path.join(basedir, 'database_file')
-    if not os.path.exists(db_dir): 
-        os.makedirs(db_dir)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'france_decor_v3.db')
+    if not os.path.exists(db_dir): os.makedirs(db_dir)
+    db_path = os.path.join(db_dir, 'france_decor_v2.db')
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- MODELOS ---
+# MODELOS
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -45,13 +37,14 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Float, default=0.0)
-    image_urls = db.Column(db.Text)
+    image_urls = db.Column(db.Text) # Aceita links colados separados por vírgula
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 # --- ROTAS ---
+
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -60,6 +53,7 @@ def index():
 @app.route('/produto/<int:id>')
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
+    # Transforma o texto de links em uma lista real para o carrossel
     images = [img.strip() for img in p.image_urls.split(',') if img.strip()]
     return render_template('produto.html', p=p, images=images)
 
@@ -70,6 +64,7 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
+        flash('Login inválido')
     return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])
@@ -79,59 +74,20 @@ def admin():
         try:
             nome = request.form.get('name')
             preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+            links = request.form.get('image_urls').strip()
             desc = request.form.get('description')
             
-            # 1. Salva arquivos de Upload
-            files = request.files.getlist('fotos')
-            image_list = []
-            for file in files:
-                if file and file.filename != '':
-                    filename = secure_filename(file.filename)
-                    unique_name = f"up_{nome.replace(' ', '_')}_{filename}"
-                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
-                    image_list.append(f"/static/produtos/{unique_name}")
-            
-            # 2. Adiciona links externos se houver
-            links = request.form.get('links_externos')
-            if links:
-                image_list.extend([l.strip() for l in links.split(',')])
-
-            novo = Product(name=nome, description=desc, image_urls=",".join(image_list), price=preco)
+            novo = Product(name=nome, description=desc, image_urls=links, price=preco)
             db.session.add(novo)
             db.session.commit()
+            flash('Produto cadastrado com sucesso!')
             return redirect(url_for('admin'))
         except Exception as e:
-            return f"Erro: {e}"
-    return render_template('admin.html', produtos=Product.query.all())
-
-@app.route('/admin/edit/<int:id>', methods=['GET', 'POST'])
-@login_required
-def edit_product(id):
-    p = Product.query.get_or_404(id)
-    if request.method == 'POST':
-        p.name = request.form.get('name')
-        p.price = float(request.form.get('price').replace(',', '.'))
-        p.description = request.form.get('description')
-        
-        # Opcional: Novas fotos
-        files = request.files.getlist('fotos')
-        new_images = []
-        for file in files:
-            if file and file.filename != '':
-                filename = secure_filename(file.filename)
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-                new_images.append(f"/static/produtos/{filename}")
-        
-        links = request.form.get('links_externos')
-        if links:
-            new_images.extend([l.strip() for l in links.split(',')])
-            
-        if new_images:
-            p.image_urls = ",".join(new_images)
-            
-        db.session.commit()
-        return redirect(url_for('admin'))
-    return render_template('edit.html', p=p)
+            db.session.rollback()
+            flash(f'Erro: {e}')
+    
+    produtos = Product.query.all()
+    return render_template('admin.html', produtos=produtos)
 
 @app.route('/delete/<int:id>')
 @login_required
