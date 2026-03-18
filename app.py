@@ -5,6 +5,13 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
+@app.route('/produto/<int:id>')
+def produto_detalhes(id):
+    p = Product.query.get_or_404(id)
+    # Separamos as imagens para o carrossel
+    images = p.image_urls.split(',') if p.image_urls else []
+    return render_template('produto.html', p=p, images=images)
+
 app = Flask(__name__)
 app.secret_key = 'france_decor_v5_pro'
 
