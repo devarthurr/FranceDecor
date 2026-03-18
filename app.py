@@ -5,28 +5,31 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2026_safe_version'
+app.secret_key = 'france_decor_blindado_2026'
 
-# --- CONFIGURAÇÃO DE BANCO DE DADOS ANTI-BLOQUEIO ---
+# --- CONFIGURAÇÃO DO BANCO DE DADOS (RESOLUÇÃO DEFINITIVA) ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-db_dir = os.path.join(basedir, 'database_file')
 
-# Cria a pasta se não existir para evitar erro de permissão do Windows
-if not os.path.exists(db_dir):
-    os.makedirs(db_dir)
-
-db_path = os.path.join(db_dir, 'france_decor.db')
-
-# Lógica para Vercel ou Local
+# Identifica se está no Windows ou Linux (Vercel)
 database_url = os.environ.get('DATABASE_URL')
+
 if database_url:
+    # Caso você conecte o Postgres da Vercel no futuro
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
+    if os.name == 'nt':  # Se for Windows (Seu PC)
+        db_dir = os.path.join(basedir, 'database_file')
+        if not os.path.exists(db_dir):
+            os.makedirs(db_dir)
+        db_path = os.path.join(db_dir, 'france_decor.db')
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
+    else:  # Se for Vercel/Linux
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/france_decor.db'
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Timeout estendido para não travar ao colar muitos links de imagens
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 30}}
 
 db = SQLAlchemy(app)
@@ -50,7 +53,7 @@ class Product(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- ROTAS PÚBLICAS ---
+# ROTAS PÚBLICAS
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -69,18 +72,21 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Acesso negado!')
+        flash('Usuário ou senha inválidos.')
     return render_template('login.html')
 
-# --- ROTAS ADMIN ---
+# ROTAS ADMIN
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
     if request.method == 'POST':
         try:
             nome = request.form.get('name')
-            preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+            # Limpa o preço para aceitar vírgula ou ponto
+            p_raw = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
+            preco = float(p_raw)
             urls = request.form.get('image_urls').replace('\n', '').strip()
+            
             novo = Product(name=nome, description=request.form.get('description'), image_urls=urls, price=preco)
             db.session.add(novo)
             db.session.commit()
@@ -98,7 +104,8 @@ def edit_product(id):
         p.name = request.form.get('name')
         p.description = request.form.get('description')
         p.image_urls = request.form.get('image_urls').replace('\n', '').strip()
-        p.price = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+        p_raw = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
+        p.price = float(p_raw)
         db.session.commit()
         return redirect(url_for('admin'))
     return render_template('edit.html', p=p)
@@ -107,8 +114,9 @@ def edit_product(id):
 @login_required
 def delete(id):
     p = Product.query.get(id)
-    db.session.delete(p)
-    db.session.commit()
+    if p:
+        db.session.delete(p)
+        db.session.commit()
     return redirect(url_for('admin'))
 
 @app.route('/logout')
@@ -116,6 +124,7 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
+# Inicialização do Banco
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
