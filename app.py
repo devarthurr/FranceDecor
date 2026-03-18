@@ -1,23 +1,23 @@
 import os
-import tempfile
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2026_ultra_v7'
+app.secret_key = 'france_decor_permanente_2026'
 
-# Banco de dados em local seguro para evitar erro de leitura
-temp_db = os.path.join(tempfile.gettempdir(), 'francedecor_v7.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{temp_db}'
+# --- CONFIGURAÇÃO DO BANCO DE DADOS FIXO ---
+# Isso garante que o arquivo database_france.db fique na sua pasta e NÃO SUMA
+basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'database_france.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 30}}
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# MODELOS
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -28,14 +28,13 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Float, default=0.0)
-    image_urls = db.Column(db.Text) # Links separados por vírgula
+    image_urls = db.Column(db.Text) # URLs separadas por vírgula
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
 # --- ROTAS PÚBLICAS ---
-
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -44,7 +43,6 @@ def index():
 @app.route('/produto/<int:id>')
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
-    # Transforma a string de links em uma lista real
     images = p.image_urls.split(',') if p.image_urls else []
     return render_template('produto.html', p=p, images=images)
 
@@ -55,10 +53,10 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
+        flash('Login inválido!')
     return render_template('login.html')
 
 # --- ROTAS ADMIN ---
-
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
@@ -66,19 +64,16 @@ def admin():
         try:
             nome = request.form.get('name')
             preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
-            urls = request.form.get('image_urls').replace('\n', '').replace(' ', '')
+            urls = request.form.get('image_urls').replace('\n', '').strip()
             
-            novo = Product(name=nome, description=request.form.get('description'), 
-                           image_urls=urls, price=preco)
+            novo = Product(name=nome, description=request.form.get('description'), image_urls=urls, price=preco)
             db.session.add(novo)
             db.session.commit()
             return redirect(url_for('admin'))
         except Exception as e:
             db.session.rollback()
             return f"Erro ao salvar: {e}"
-    
-    produtos = Product.query.all()
-    return render_template('admin.html', produtos=produtos)
+    return render_template('admin.html', produtos=Product.query.all())
 
 @app.route('/admin/edit/<int:id>', methods=['GET', 'POST'])
 @login_required
@@ -87,7 +82,7 @@ def edit_product(id):
     if request.method == 'POST':
         p.name = request.form.get('name')
         p.description = request.form.get('description')
-        p.image_urls = request.form.get('image_urls').replace('\n', '').replace(' ', '')
+        p.image_urls = request.form.get('image_urls').replace('\n', '').strip()
         p.price = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
         db.session.commit()
         return redirect(url_for('admin'))
@@ -96,13 +91,17 @@ def edit_product(id):
 @app.route('/delete/<int:id>')
 @login_required
 def delete(id):
-    p = Product.query.get(id); db.session.delete(p); db.session.commit()
+    p = Product.query.get(id)
+    db.session.delete(p)
+    db.session.commit()
     return redirect(url_for('admin'))
 
 @app.route('/logout')
 def logout():
-    logout_user(); return redirect(url_for('index'))
+    logout_user()
+    return redirect(url_for('index'))
 
+# INICIALIZAÇÃO
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
