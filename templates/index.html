@@ -8,12 +8,12 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         :root { --azul: #0047BB; --gold: #D4AF37; }
-        body { background-color: #f8f9fa; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; }
 
-        /* Header: Logo ao lado do nome + Instagram na direita */
+        /* Header: Logo + Nome/Slogan + Instagram */
         .navbar { 
             background-color: var(--azul);
-            padding: 20px 0;
+            padding: 15px 0;
             border-bottom: 3px solid var(--gold);
         }
         .navbar-brand { 
@@ -23,25 +23,31 @@
             text-decoration: none;
         }
         .logo-nav { 
-            height: 80px; /* Logo aumentada conforme pedido */
+            height: 80px; 
             border-radius: 12px;
             border: 2px solid white;
         }
+        .brand-text-container { display: flex; flex-direction: column; }
         .brand-name { 
             color: white; 
             font-weight: 800; 
             font-size: 1.8rem; 
             margin: 0;
-            letter-spacing: 1px;
+            line-height: 1;
+        }
+        .brand-slogan {
+            color: rgba(255,255,255,0.8);
+            font-size: 0.9rem;
+            font-weight: 400;
+            margin-top: 5px;
         }
         .insta-link {
             color: white;
             text-decoration: none;
             font-weight: 600;
-            font-size: 1rem;
             transition: 0.3s;
         }
-        .insta-link:hover { opacity: 0.8; color: #ffd700; }
+        .insta-link:hover { color: var(--gold); }
 
         /* Cards de Produto */
         .card-product { 
@@ -51,20 +57,17 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.06);
             transition: 0.3s;
         }
-        
-        /* Ajuste para a imagem NÃO ser cortada */
         .img-container {
             height: 300px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: #fff;
             padding: 10px;
         }
         .img-container img {
             max-width: 100%;
             max-height: 100%;
-            object-fit: contain; /* Foto inteira sempre */
+            object-fit: contain;
         }
 
         .product-title { font-weight: 700; color: #333; margin: 10px 0 5px 0; }
@@ -80,12 +83,30 @@
             display: block;
             text-align: center;
         }
-        .btn-wa:hover { background-color: #1ea952; color: white; }
+
+        /* BOTÃO ADMIN - CADEADO NO CANTO DIREITO */
+        .admin-lock {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            z-index: 1000;
+            transition: 0.3s;
+        }
+        .admin-lock:hover { background-color: var(--azul); transform: scale(1.1); }
 
         @media (max-width: 576px) {
-            .brand-name { font-size: 1.3rem; }
-            .logo-nav { height: 60px; }
-            .navbar .container { flex-direction: row; justify-content: space-between; }
+            .brand-name { font-size: 1.4rem; }
+            .logo-nav { height: 65px; }
+            .insta-link { font-size: 0.9rem; }
         }
     </style>
 </head>
@@ -95,7 +116,10 @@
         <div class="container d-flex justify-content-between align-items-center">
             <a class="navbar-brand" href="/">
                 <img src="{{ url_for('static', filename='logo.jpg') }}" class="logo-nav">
-                <h1 class="brand-name">FRANCE DECOR</h1>
+                <div class="brand-text-container">
+                    <h1 class="brand-name">FRANCE DECOR</h1>
+                    <span class="brand-slogan">Artes em festas</span>
+                </div>
             </a>
             
             <a href="https://www.instagram.com/_france.decor/" target="_blank" class="insta-link">
@@ -120,15 +144,15 @@
                                 {% if p.price and p.price > 0 %}
                                     R$ {{ "%.2f"|format(p.price) }}
                                 {% else %}
-                                    Consultar Valor
+                                    Consultar valor
                                 {% endif %}
                             </div>
                         </div>
                         
-                        <p class="text-muted small">{{ p.description }}</p>
+                        <p class="text-muted small mb-3">{{ p.description }}</p>
                         
                         <a href="https://wa.me/5511999999999?text=Olá! Gostaria de saber mais sobre: {{ p.name }}" class="btn-wa">
-                            <i class="bi bi-whatsapp me-1"></i> Chamar no WhatsApp
+                            <i class="bi bi-whatsapp me-1"></i> WhatsApp
                         </a>
                     </div>
                 </div>
@@ -136,6 +160,10 @@
             {% endfor %}
         </div>
     </div>
+
+    <a href="/login" class="admin-lock shadow">
+        <i class="bi bi-lock-fill fs-5"></i>
+    </a>
 
 </body>
 </html>
