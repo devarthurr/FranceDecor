@@ -8,16 +8,15 @@
     <style>
         :root { --azul: #0047BB; --gold: #D4AF37; }
         body { background-color: #f8f9fa; }
-        .navbar { background: var(--azul); border-bottom: 4px solid var(--gold); padding: 10px 0; }
+        .navbar { background: var(--azul); border-bottom: 4px solid var(--gold); padding: 12px 0; }
         .logo-nav { height: 75px; border-radius: 12px; border: 2px solid white; background: white; }
         .card-product { border: none; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); background: white; }
-        .img-box { height: 240px; display: flex; align-items: center; justify-content: center; padding: 15px; overflow: hidden; }
+        .img-box { height: 240px; display: flex; align-items: center; justify-content: center; padding: 15px; }
         .img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .admin-lock { position: fixed; bottom: 25px; right: 25px; background: rgba(0,0,0,0.2); color: white; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; }
     </style>
 </head>
 <body>
-    <nav class="navbar mb-4 sticky-top shadow-sm">
+    <nav class="navbar mb-4 sticky-top">
         <div class="container d-flex justify-content-between align-items-center">
             <a class="navbar-brand d-flex align-items-center gap-3 text-white fw-bold m-0" href="/">
                 <img src="{{ url_for('static', filename='logo.jpg') }}" class="logo-nav">
@@ -28,8 +27,7 @@
             </a>
         </div>
     </nav>
-
-    <div class="container pb-5">
+    <div class="container pb-5 px-3">
         <div class="row row-cols-1 row-cols-md-3 g-4">
             {% for p in produtos %}
             <div class="col">
@@ -37,17 +35,17 @@
                     <a href="/produto/{{p.id}}" class="text-decoration-none text-dark">
                         <div class="img-box">
                             {% set img_name = p.image_urls.split(',')[0] if p.image_urls else '' %}
-                            <img src="{{ url_for('static', filename='produtos/' + img_name) }}">
+                            <img src="{{ url_for('static', filename='produtos/' + img_name) if img_name else '' }}">
                         </div>
                         <h6 class="fw-bold mt-2">{{ p.name }}</h6>
-                        <div class="text-primary fw-bold">R$ {{ "%.2f"|format(p.price) if p.price > 0 else "Consultar" }}</div>
+                        <div class="text-primary fw-bold mb-2">R$ {{ "%.2f"|format(p.price) if p.price > 0 else "Consultar" }}</div>
                     </a>
-                    <a href="https://wa.me/5511999999999" class="btn btn-success w-100 rounded-pill fw-bold mt-2">WhatsApp</a>
+                    <a href="https://wa.me/5511999999999" class="btn btn-success w-100 rounded-pill fw-bold">WhatsApp</a>
                 </div>
             </div>
             {% endfor %}
         </div>
     </div>
-    <a href="/login" class="admin-lock shadow"><i class="bi bi-lock-fill"></i></a>
+    <a href="/login" style="position:fixed; bottom:20px; right:20px; color:#ccc;"><i class="bi bi-lock-fill"></i></a>
 </body>
 </html>

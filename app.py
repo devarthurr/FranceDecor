@@ -6,31 +6,35 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_final_ultra_v3'
+app.secret_key = 'france_decor_ultra_fix_2026'
 
-# --- CONFIGURAÇÃO DE PASTAS ---
+# --- CONFIGURAÇÃO DE AMBIENTE (PC vs VERCEL) ---
 basedir = os.path.abspath(os.path.dirname(__file__))
+IS_VERCEL = "VERCEL" in os.environ
 
-# Pasta física no seu VS Code
-UPLOAD_FOLDER = os.path.join(basedir, 'static', 'produtos')
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+if IS_VERCEL:
+    # Configuração para Vercel (Temporária para não dar erro 500)
+    UPLOAD_FOLDER = '/tmp'
+    db_path = '/tmp/france_decor.db'
+else:
+    # Configuração para seu PC (VS Code)
+    UPLOAD_FOLDER = os.path.join(basedir, 'static', 'produtos')
+    if not os.path.exists(UPLOAD_FOLDER):
+        os.makedirs(UPLOAD_FOLDER)
+    
+    db_dir = os.path.join(basedir, 'database_file')
+    if not os.path.exists(db_dir): os.makedirs(db_dir)
+    db_path = os.path.join(db_dir, 'france_decor.db')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
-
-# --- BANCO DE DADOS ---
-db_dir = os.path.join(basedir, 'database_file')
-if not os.path.exists(db_dir): os.makedirs(db_dir)
-db_path = os.path.join(db_dir, 'france_decor.db')
-
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
+db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# --- MODELOS ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -47,9 +51,6 @@ class Product(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
 # --- ROTAS ---
 @app.route('/')
 def index():
@@ -59,7 +60,6 @@ def index():
 @app.route('/produto/<int:id>')
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
-    # Importante: limpando espaços e garantindo a lista
     images = [img.strip() for img in p.image_urls.split(',') if img.strip()]
     return render_template('produto.html', p=p, images=images)
 
@@ -82,28 +82,23 @@ def admin():
             desc = request.form.get('description')
             
             files = request.files.getlist('fotos')
-            saved_paths = []
+            saved_names = []
             
             for file in files:
-                if file and allowed_file(file.filename):
-                    # Criar nome seguro para o arquivo
+                if file and file.filename != '':
                     filename = secure_filename(file.filename)
-                    unique_name = f"foto_{nome.replace(' ', '_')}_{filename}"
-                    
-                    # Salva fisicamente na pasta static/produtos
+                    unique_name = f"item_{nome.replace(' ', '_')}_{filename}"
                     file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
-                    
-                    # Salva no banco APENAS o nome do arquivo para o Flask achar no static
-                    saved_paths.append(unique_name)
+                    saved_names.append(unique_name)
             
-            urls_final = ",".join(saved_paths)
+            urls_final = ",".join(saved_names)
             novo = Product(name=nome, description=desc, image_urls=urls_final, price=preco)
             db.session.add(novo)
             db.session.commit()
             return redirect(url_for('admin'))
         except Exception as e:
             db.session.rollback()
-            return f"Erro ao salvar: {e}"
+            return f"Erro: {e}"
     return render_template('admin.html', produtos=Product.query.all())
 
 @app.route('/delete/<int:id>')
