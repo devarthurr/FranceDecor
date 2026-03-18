@@ -5,18 +5,13 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_local_system_2026'
+app.secret_key = 'france_decor_config_2026'
 
-# --- CONFIGURAÇÃO DE BANCO DE DADOS INTERNO ---
+# --- CONFIGURAÇÃO DO BANCO DE DADOS ---
+# Define o caminho para o arquivo 'france_decor.db' na raiz do seu VS Code
 basedir = os.path.abspath(os.path.dirname(__file__))
-db_dir = os.path.join(basedir, 'database_file')
+db_path = os.path.join(basedir, 'france_decor.db')
 
-# Garante que a pasta do banco existe
-if not os.path.exists(db_dir):
-    os.makedirs(db_dir)
-
-# Caminho do arquivo que você verá no VS Code
-db_path = os.path.join(db_dir, 'france_decor.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -60,7 +55,6 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Erro no login.')
     return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])
@@ -79,7 +73,7 @@ def admin():
             return redirect(url_for('admin'))
         except Exception as e:
             db.session.rollback()
-            return f"Erro: {e}"
+            return f"Erro: {e}. Lembre-se: edições devem ser feitas no VS Code local."
     return render_template('admin.html', produtos=Product.query.all())
 
 @app.route('/admin/edit/<int:id>', methods=['GET', 'POST'])
@@ -99,16 +93,12 @@ def edit_product(id):
 @app.route('/delete/<int:id>')
 @login_required
 def delete(id):
-    p = Product.query.get(id)
-    if p:
-        db.session.delete(p)
-        db.session.commit()
+    p = Product.query.get(id); db.session.delete(p); db.session.commit()
     return redirect(url_for('admin'))
 
 @app.route('/logout')
 def logout():
-    logout_user()
-    return redirect(url_for('index'))
+    logout_user(); return redirect(url_for('index'))
 
 with app.app_context():
     db.create_all()
