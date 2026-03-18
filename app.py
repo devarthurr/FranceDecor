@@ -6,16 +6,11 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2026_premium_final'
+app.secret_key = 'france_decor_v5_pro'
 
-# Configuração Anti-Erro de Banco
-if os.environ.get('DATABASE_URL'):
-    db_url = os.environ.get('DATABASE_URL').replace("postgres://", "postgresql://", 1)
-else:
-    temp_db = os.path.join(tempfile.gettempdir(), 'francedecor_v4.db')
-    db_url = f'sqlite:///{temp_db}'
-
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+# Banco de dados temporário para evitar erro de leitura
+temp_db = os.path.join(tempfile.gettempdir(), 'francedecor_v5.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{temp_db}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -32,7 +27,8 @@ class Product(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
     price = db.Column(db.Float)
-    image_url = db.Column(db.String(500))
+    # Agora aceita várias URLs separadas por vírgula
+    image_urls = db.Column(db.Text) 
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -50,25 +46,38 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Usuário ou senha incorretos')
     return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
     if request.method == 'POST':
-        try:
-            nome = request.form.get('name')
-            preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
-            novo = Product(name=nome, description=request.form.get('description'), 
-                           image_url=request.form.get('image_url'), price=preco)
-            db.session.add(novo)
-            db.session.commit()
-            return redirect(url_for('admin'))
-        except Exception as e:
-            db.session.rollback()
-            return f"Erro: {e}"
-    return render_template('admin.html', produtos=Product.query.all())
+        nome = request.form.get('name')
+        preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+        # Pegamos as URLs e limpamos espaços
+        urls = request.form.get('image_urls')
+        
+        novo = Product(name=nome, description=request.form.get('description'), 
+                       image_urls=urls, price=preco)
+        db.session.add(novo)
+        db.session.commit()
+        return redirect(url_for('admin'))
+    
+    produtos = Product.query.all()
+    return render_template('admin.html', produtos=produtos)
+
+@app.route('/admin/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_product(id):
+    p = Product.query.get_or_404(id)
+    if request.method == 'POST':
+        p.name = request.form.get('name')
+        p.description = request.form.get('description')
+        p.image_urls = request.form.get('image_urls')
+        p.price = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+        db.session.commit()
+        return redirect(url_for('admin'))
+    return render_template('edit.html', p=p)
 
 @app.route('/delete/<int:id>')
 @login_required

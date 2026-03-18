@@ -3,127 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>France Decor | Catálogo</title>
+    <title>France Decor | Premium</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         :root { --azul: #0047BB; --gold: #D4AF37; }
-        body { background-color: #f8f9fa; font-family: 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; }
+        body { background-color: #f8f9fa; font-family: sans-serif; }
 
-        /* Header: Logo + Nome/Slogan + Instagram */
-        .navbar { 
-            background-color: var(--azul);
-            padding: 15px 0;
-            border-bottom: 3px solid var(--gold);
-        }
-        .navbar-brand { 
-            display: flex; 
-            align-items: center; 
-            gap: 15px; 
-            text-decoration: none;
-        }
-        .logo-nav { 
-            height: 80px; 
-            border-radius: 12px;
-            border: 2px solid white;
-        }
-        .brand-text-container { display: flex; flex-direction: column; }
-        .brand-name { 
-            color: white; 
-            font-weight: 800; 
-            font-size: 1.8rem; 
-            margin: 0;
-            line-height: 1;
-        }
-        .brand-slogan {
-            color: rgba(255,255,255,0.8);
-            font-size: 0.9rem;
-            font-weight: 400;
-            margin-top: 5px;
-        }
-        .insta-link {
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-            transition: 0.3s;
-        }
+        .navbar { background-color: var(--azul); padding: 15px 0; border-bottom: 3px solid var(--gold); }
+        .logo-nav { height: 80px; border-radius: 12px; border: 2px solid white; }
+        .brand-name { color: white; font-weight: 800; font-size: 1.8rem; margin: 0; line-height: 1; }
+        .brand-slogan { color: rgba(255,255,255,0.8); font-size: 0.9rem; }
+        
+        .insta-link { color: white; text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 8px; }
         .insta-link:hover { color: var(--gold); }
 
-        /* Cards de Produto */
-        .card-product { 
-            border: none; 
-            border-radius: 20px; 
-            background: white; 
-            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
-            transition: 0.3s;
-        }
-        .img-container {
-            height: 300px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px;
-        }
-        .img-container img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-        }
-
-        .product-title { font-weight: 700; color: #333; margin: 10px 0 5px 0; }
-        .price-tag { color: var(--azul); font-weight: 800; font-size: 1.25rem; margin-bottom: 15px; }
+        .card-product { border: none; border-radius: 20px; background: white; box-shadow: 0 8px 20px rgba(0,0,0,0.06); }
         
-        .btn-wa { 
-            background-color: #25D366; 
-            color: white; 
-            font-weight: bold; 
-            border-radius: 10px; 
-            padding: 12px;
-            text-decoration: none;
-            display: block;
-            text-align: center;
-        }
+        /* Carrossel de Imagens */
+        .carousel-item { height: 300px; background: white; }
+        .carousel-item img { max-width: 100%; max-height: 100%; object-fit: contain; margin: auto; display: block; }
 
-        /* BOTÃO ADMIN - CADEADO NO CANTO DIREITO */
-        .admin-lock {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background-color: rgba(0,0,0,0.5);
-            color: white;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            z-index: 1000;
-            transition: 0.3s;
-        }
-        .admin-lock:hover { background-color: var(--azul); transform: scale(1.1); }
-
-        @media (max-width: 576px) {
-            .brand-name { font-size: 1.4rem; }
-            .logo-nav { height: 65px; }
-            .insta-link { font-size: 0.9rem; }
-        }
+        .price-tag { color: var(--azul); font-weight: 800; font-size: 1.25rem; margin-bottom: 10px; }
+        .btn-wa { background-color: #25D366; color: white; font-weight: bold; border-radius: 10px; padding: 12px; text-decoration: none; display: block; text-align: center; }
+        .admin-lock { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.5); color: white; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; z-index: 1000; }
     </style>
 </head>
 <body>
 
     <nav class="navbar mb-5">
         <div class="container d-flex justify-content-between align-items-center">
-            <a class="navbar-brand" href="/">
+            <a class="navbar-brand d-flex align-items-center gap-3" href="/">
                 <img src="{{ url_for('static', filename='logo.jpg') }}" class="logo-nav">
-                <div class="brand-text-container">
+                <div>
                     <h1 class="brand-name">FRANCE DECOR</h1>
                     <span class="brand-slogan">Artes em festas</span>
                 </div>
             </a>
-            
             <a href="https://www.instagram.com/_france.decor/" target="_blank" class="insta-link">
-                Instagram
+                <i class="bi bi-instagram fs-5"></i> Instagram
             </a>
         </div>
     </nav>
@@ -132,38 +50,43 @@
         <div class="row row-cols-1 row-cols-md-3 g-4">
             {% for p in produtos %}
             <div class="col">
-                <div class="card card-product h-100 p-3">
-                    <div class="img-container">
-                        <img src="{{ p.image_url }}" alt="{{ p.name }}">
+                <div class="card card-product h-100 p-3 text-center">
+                    
+                    <div id="carousel{{p.id}}" class="carousel slide" data-bs-ride="false">
+                        <div class="carousel-inner">
+                            {% set images = p.image_urls.split(',') %}
+                            {% for img in images %}
+                            <div class="carousel-item {% if loop.first %}active{% endif %}">
+                                <img src="{{ img.strip() }}" alt="{{ p.name }}">
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if images|length > 1 %}
+                        <button class="carousel-control-prev" type="button" data-bs-target="#carousel{{p.id}}" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon bg-dark rounded-circle" aria-hidden="true"></span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#carousel{{p.id}}" data-bs-slide="next">
+                            <span class="carousel-control-next-icon bg-dark rounded-circle" aria-hidden="true"></span>
+                        </button>
+                        {% endif %}
                     </div>
                     
-                    <div class="card-body text-center d-flex flex-column justify-content-between">
-                        <div>
-                            <h5 class="product-title">{{ p.name }}</h5>
-                            <div class="price-tag">
-                                {% if p.price and p.price > 0 %}
-                                    R$ {{ "%.2f"|format(p.price) }}
-                                {% else %}
-                                    Consultar valor
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <p class="text-muted small mb-3">{{ p.description }}</p>
-                        
-                        <a href="https://wa.me/5511999999999?text=Olá! Gostaria de saber mais sobre: {{ p.name }}" class="btn-wa">
-                            <i class="bi bi-whatsapp me-1"></i> WhatsApp
-                        </a>
+                    <h5 class="fw-bold mt-3">{{ p.name }}</h5>
+                    <div class="price-tag">
+                        {% if p.price > 0 %} R$ {{ "%.2f"|format(p.price) }} {% else %} Consultar valor {% endif %}
                     </div>
+                    <p class="text-muted small">{{ p.description }}</p>
+                    <a href="https://wa.me/5511999999999?text=Quero saber sobre: {{ p.name }}" class="btn-wa">
+                        <i class="bi bi-whatsapp"></i> WhatsApp
+                    </a>
                 </div>
             </div>
             {% endfor %}
         </div>
     </div>
 
-    <a href="/login" class="admin-lock shadow">
-        <i class="bi bi-lock-fill fs-5"></i>
-    </a>
+    <a href="/login" class="admin-lock"><i class="bi bi-lock-fill"></i></a>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
