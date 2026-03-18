@@ -5,20 +5,14 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
-@app.route('/produto/<int:id>')
-def produto_detalhes(id):
-    p = Product.query.get_or_404(id)
-    # Separamos as imagens para o carrossel
-    images = p.image_urls.split(',') if p.image_urls else []
-    return render_template('produto.html', p=p, images=images)
-
 app = Flask(__name__)
-app.secret_key = 'france_decor_v5_pro'
+app.secret_key = 'france_decor_2026_ultra_v7'
 
-# Banco de dados temporário para evitar erro de leitura
-temp_db = os.path.join(tempfile.gettempdir(), 'francedecor_v5.db')
+# Banco de dados em local seguro para evitar erro de leitura
+temp_db = os.path.join(tempfile.gettempdir(), 'francedecor_v7.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{temp_db}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 30}}
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -33,18 +27,26 @@ class Product(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    price = db.Column(db.Float)
-    # Agora aceita várias URLs separadas por vírgula
-    image_urls = db.Column(db.Text) 
+    price = db.Column(db.Float, default=0.0)
+    image_urls = db.Column(db.Text) # Links separados por vírgula
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# --- ROTAS PÚBLICAS ---
+
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
     return render_template('index.html', produtos=produtos)
+
+@app.route('/produto/<int:id>')
+def produto_detalhes(id):
+    p = Product.query.get_or_404(id)
+    # Transforma a string de links em uma lista real
+    images = p.image_urls.split(',') if p.image_urls else []
+    return render_template('produto.html', p=p, images=images)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -55,20 +57,25 @@ def login():
             return redirect(url_for('admin'))
     return render_template('login.html')
 
+# --- ROTAS ADMIN ---
+
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
     if request.method == 'POST':
-        nome = request.form.get('name')
-        preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
-        # Pegamos as URLs e limpamos espaços
-        urls = request.form.get('image_urls')
-        
-        novo = Product(name=nome, description=request.form.get('description'), 
-                       image_urls=urls, price=preco)
-        db.session.add(novo)
-        db.session.commit()
-        return redirect(url_for('admin'))
+        try:
+            nome = request.form.get('name')
+            preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
+            urls = request.form.get('image_urls').replace('\n', '').replace(' ', '')
+            
+            novo = Product(name=nome, description=request.form.get('description'), 
+                           image_urls=urls, price=preco)
+            db.session.add(novo)
+            db.session.commit()
+            return redirect(url_for('admin'))
+        except Exception as e:
+            db.session.rollback()
+            return f"Erro ao salvar: {e}"
     
     produtos = Product.query.all()
     return render_template('admin.html', produtos=produtos)
@@ -80,7 +87,7 @@ def edit_product(id):
     if request.method == 'POST':
         p.name = request.form.get('name')
         p.description = request.form.get('description')
-        p.image_urls = request.form.get('image_urls')
+        p.image_urls = request.form.get('image_urls').replace('\n', '').replace(' ', '')
         p.price = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
         db.session.commit()
         return redirect(url_for('admin'))
