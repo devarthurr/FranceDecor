@@ -5,25 +5,19 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2026_final'
+app.secret_key = 'france_decor_2026_key'
 
-# --- LÓGICA DE BANCO DE DADOS CORRIGIDA ---
+# Configuração de Banco de Dados
 database_url = os.environ.get('DATABASE_URL')
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-if database_url:
-    # Se estiver na Vercel com Postgres conectado
-    if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+# Se não houver Postgres, usa SQLite na pasta atual de forma simples
+if not database_url:
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'catalogo.db')
 else:
-    # Se estiver no Windows (seu PC) ou Vercel sem Postgres
-    if os.name == 'nt': # Windows
-        basedir = os.path.abspath(os.path.dirname(__file__))
-        db_path = os.path.join(basedir, 'france_decor_local.db')
-    else: # Servidores Linux (Vercel)
-        db_path = '/tmp/france_decor.db'
-    
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -47,7 +41,6 @@ class Product(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- ROTAS ---
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -66,7 +59,6 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Usuário ou senha inválidos.')
     return render_template('login.html')
 
 @app.route('/admin', methods=['GET', 'POST'])

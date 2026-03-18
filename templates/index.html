@@ -2,50 +2,48 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>France Decor | Catálogo</title>
+    <title>France Decor</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         :root { --azul: #0047BB; --gold: #D4AF37; }
         body { background-color: #f8f9fa; }
-        .navbar { background: var(--azul); padding: 15px 0; border-bottom: 4px solid var(--gold); }
-        .logo-nav { height: 80px; border-radius: 12px; border: 2px solid white; }
-        .brand-name { color: white; font-weight: 800; font-size: 1.8rem; margin: 0; }
-        .card-product { border: none; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); transition: 0.3s; background: white; }
-        .img-box { height: 250px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+        .navbar { background: var(--azul); border-bottom: 4px solid var(--gold); padding: 15px; }
+        .logo-nav { height: 70px; border-radius: 10px; border: 2px solid white; }
+        .card-product { border: none; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; }
+        .img-box { height: 200px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
-        .admin-lock { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.3); color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; }
     </style>
 </head>
 <body>
     <nav class="navbar mb-4 sticky-top">
         <div class="container d-flex justify-content-between align-items-center">
-            <a class="navbar-brand d-flex align-items-center gap-3" href="/">
+            <a class="navbar-brand d-flex align-items-center gap-3 text-white fw-bold" href="/">
                 <img src="{{ url_for('static', filename='logo.jpg') }}" class="logo-nav">
-                <div><h1 class="brand-name">FRANCE DECOR</h1><small class="text-white-50 text-uppercase">Artes em festas</small></div>
+                FRANCE DECOR
             </a>
-            <a href="https://www.instagram.com/_france.decor/" target="_blank" class="text-white text-decoration-none fw-bold"><i class="bi bi-instagram fs-4"></i></a>
+            <a href="https://www.instagram.com/_france.decor/" target="_blank" class="text-white fs-4"><i class="bi bi-instagram"></i></a>
         </div>
     </nav>
     <div class="container pb-5">
         <div class="row row-cols-1 row-cols-md-3 g-4">
             {% for p in produtos %}
-            <div class="col text-center">
-                <div class="card card-product h-100 p-2">
+            <div class="col">
+                <div class="card card-product h-100 p-3 text-center">
                     <a href="/produto/{{p.id}}" class="text-decoration-none text-dark">
-                        <div class="img-box">
-                            {% set first_img = p.image_urls.split(',')[0] if p.image_urls else '' %}
-                            <img src="{{ first_img.strip() }}">
+                        <div class="img-box mb-2">
+                            {% set img = p.image_urls.split(',')[0] if p.image_urls else '' %}
+                            <img src="{{ img.strip() }}">
                         </div>
-                        <h6 class="fw-bold mt-2">{{ p.name }}</h6>
-                        <div class="text-primary fw-bold mb-2">{% if p.price > 0 %} R$ {{ "%.2f"|format(p.price) }} {% else %} Consultar valor {% endif %}</div>
+                        <h6 class="fw-bold">{{ p.name }}</h6>
+                        <p class="text-primary fw-bold">R$ {{ "%.2f"|format(p.price) if p.price > 0 else "Consultar" }}</p>
                     </a>
-                    <a href="https://wa.me/5511999999999?text=Quero saber mais sobre: {{ p.name }}" class="btn btn-success w-100 rounded-pill fw-bold"><i class="bi bi-whatsapp"></i> WhatsApp</a>
+                    <a href="https://wa.me/5511999999999?text=Vi o produto {{ p.name }} no catálogo" class="btn btn-success rounded-pill fw-bold"><i class="bi bi-whatsapp"></i> WhatsApp</a>
                 </div>
             </div>
             {% endfor %}
         </div>
     </div>
-    <a href="/login" class="admin-lock shadow"><i class="bi bi-lock-fill"></i></a>
+    <a href="/login" style="position:fixed; bottom:20px; right:20px; color:#ccc; text-decoration:none;"><i class="bi bi-lock"></i></a>
 </body>
 </html>
