@@ -4,15 +4,33 @@
 <body class="bg-light p-4">
     <div class="container" style="max-width: 800px;">
         <div class="d-flex justify-content-between mb-4"><h3>Admin France Decor</h3><a href="/logout" class="btn btn-danger btn-sm">Sair</a></div>
+        
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}
+            {% for message in messages %}
+              <div class="alert alert-info">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
         <div class="card p-4 shadow-sm border-0 mb-4 rounded-4">
             <form method="POST" enctype="multipart/form-data">
-                <input type="text" name="name" placeholder="Nome" class="form-control mb-2" required>
+                <input type="text" name="name" placeholder="Nome do Produto" class="form-control mb-2" required>
                 <input type="text" name="price" placeholder="Preço" class="form-control mb-2">
-                <label class="small fw-bold text-primary mt-2">Escolha as fotos:</label>
+                <label class="small fw-bold text-primary">Escolha as fotos:</label>
                 <input type="file" name="fotos" class="form-control mb-3" multiple required>
                 <textarea name="description" placeholder="Descrição" class="form-control mb-3" rows="3"></textarea>
-                <button class="btn btn-primary w-100 fw-bold">SALVAR</button>
+                <button class="btn btn-primary w-100 fw-bold">SALVAR PRODUTO NO VS CODE</button>
             </form>
+        </div>
+        
+        <div class="list-group">
+            {% for p in produtos %}
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                {{ p.name }}
+                <a href="{{ url_for('delete', id=p.id) }}" class="btn btn-sm btn-danger">Excluir</a>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </body>
