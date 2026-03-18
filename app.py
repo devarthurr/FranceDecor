@@ -5,29 +5,32 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2026_full_edition'
+app.secret_key = 'france_decor_2026_final'
 
-# --- CONFIGURAÇÃO DE BANCO DE DADOS PERMANENTE ---
-# Prioriza o banco da Vercel (Postgres), se não houver, usa o local seguro.
+# --- LÓGICA DE BANCO DE DADOS CORRIGIDA ---
 database_url = os.environ.get('DATABASE_URL')
-if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
 
-if not database_url:
-    home_dir = os.path.expanduser("~")
-    db_dir = os.path.join(home_dir, ".francedecor_data")
-    if not os.path.exists(db_dir):
-        os.makedirs(db_dir)
-    database_url = 'sqlite:///' + os.path.join(db_dir, 'france_v11.db')
+if database_url:
+    # Se estiver na Vercel com Postgres conectado
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Se estiver no Windows (seu PC) ou Vercel sem Postgres
+    if os.name == 'nt': # Windows
+        basedir = os.path.abspath(os.path.dirname(__file__))
+        db_path = os.path.join(basedir, 'france_decor_local.db')
+    else: # Servidores Linux (Vercel)
+        db_path = '/tmp/france_decor.db'
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# MODELOS
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -44,7 +47,7 @@ class Product(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- ROTAS PÚBLICAS ---
+# --- ROTAS ---
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -66,7 +69,6 @@ def login():
         flash('Usuário ou senha inválidos.')
     return render_template('login.html')
 
-# --- ROTAS ADMIN ---
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
@@ -100,15 +102,12 @@ def edit_product(id):
 @app.route('/delete/<int:id>')
 @login_required
 def delete(id):
-    p = Product.query.get(id)
-    db.session.delete(p)
-    db.session.commit()
+    p = Product.query.get(id); db.session.delete(p); db.session.commit()
     return redirect(url_for('admin'))
 
 @app.route('/logout')
 def logout():
-    logout_user()
-    return redirect(url_for('index'))
+    logout_user(); return redirect(url_for('index'))
 
 with app.app_context():
     db.create_all()
