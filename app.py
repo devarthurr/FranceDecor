@@ -5,24 +5,26 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_resgate_v5_final'
+app.secret_key = 'france_decor_local_system_2026'
 
-# --- CONFIGURAÇÃO DE BANCO DE DADOS ---
+# --- CONFIGURAÇÃO DE BANCO DE DADOS INTERNO ---
 basedir = os.path.abspath(os.path.dirname(__file__))
+db_dir = os.path.join(basedir, 'database_file')
 
-if os.environ.get('VERCEL'):
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/france_decor.db'
-else:
-    db_dir = os.path.join(basedir, 'database_file')
-    if not os.path.exists(db_dir): os.makedirs(db_dir)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'france_decor.db')
+# Garante que a pasta do banco existe
+if not os.path.exists(db_dir):
+    os.makedirs(db_dir)
 
+# Caminho do arquivo que você verá no VS Code
+db_path = os.path.join(db_dir, 'france_decor.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
+db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# --- MODELOS ---
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -40,7 +42,6 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # --- ROTAS ---
-
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -49,11 +50,7 @@ def index():
 @app.route('/produto/<int:id>')
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
-    # CORREÇÃO: Se image_urls estiver vazio ou None, cria uma lista vazia para não dar erro
-    if p.image_urls:
-        images = [img.strip() for img in p.image_urls.split(',') if img.strip()]
-    else:
-        images = []
+    images = [img.strip() for img in p.image_urls.split(',') if p.image_urls and img.strip()]
     return render_template('produto.html', p=p, images=images)
 
 @app.route('/login', methods=['GET', 'POST'])
