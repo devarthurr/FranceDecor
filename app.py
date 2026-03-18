@@ -5,25 +5,35 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_resgate_2026'
+app.secret_key = 'france_decor_2026_safe_version'
 
-# Configuração de Banco de Dados Robusta
+# --- CONFIGURAÇÃO DE BANCO DE DADOS ANTI-BLOQUEIO ---
+basedir = os.path.abspath(os.path.dirname(__file__))
+db_dir = os.path.join(basedir, 'database_file')
+
+# Cria a pasta se não existir para evitar erro de permissão do Windows
+if not os.path.exists(db_dir):
+    os.makedirs(db_dir)
+
+db_path = os.path.join(db_dir, 'france_decor.db')
+
+# Lógica para Vercel ou Local
 database_url = os.environ.get('DATABASE_URL')
-if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
-
-if not database_url:
-    basedir = os.path.abspath(os.path.dirname(__file__))
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'catalogo.db')
-else:
+if database_url:
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 30}}
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# MODELOS
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -40,6 +50,7 @@ class Product(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+# --- ROTAS PÚBLICAS ---
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -58,8 +69,10 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
+        flash('Acesso negado!')
     return render_template('login.html')
 
+# --- ROTAS ADMIN ---
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
@@ -74,7 +87,7 @@ def admin():
             return redirect(url_for('admin'))
         except Exception as e:
             db.session.rollback()
-            return f"Erro: {e}"
+            return f"Erro ao salvar: {e}"
     return render_template('admin.html', produtos=Product.query.all())
 
 @app.route('/admin/edit/<int:id>', methods=['GET', 'POST'])
@@ -93,12 +106,15 @@ def edit_product(id):
 @app.route('/delete/<int:id>')
 @login_required
 def delete(id):
-    p = Product.query.get(id); db.session.delete(p); db.session.commit()
+    p = Product.query.get(id)
+    db.session.delete(p)
+    db.session.commit()
     return redirect(url_for('admin'))
 
 @app.route('/logout')
 def logout():
-    logout_user(); return redirect(url_for('index'))
+    logout_user()
+    return redirect(url_for('index'))
 
 with app.app_context():
     db.create_all()

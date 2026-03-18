@@ -8,17 +8,17 @@
     <style>
         .carousel-item { height: 450px; background: #fff; }
         .carousel-item img { max-width: 100%; max-height: 100%; object-fit: contain; margin: auto; display: block; }
-        .price-tag { color: #0047BB; font-size: 2.2rem; font-weight: 800; }
-        .btn-wa { background: #25D366; color: white; font-weight: bold; border-radius: 50px; padding: 15px; display: block; text-align: center; font-size: 1.1rem; text-decoration: none; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.3); }
+        .price-tag { color: #0047BB; font-size: 2.5rem; font-weight: 800; }
+        .btn-wa { background: #25D366; color: white; font-weight: bold; border-radius: 50px; padding: 15px; display: block; text-align: center; text-decoration: none; font-size: 1.2rem; }
     </style>
 </head>
 <body class="bg-light">
     <div class="container py-4">
-        <a href="/" class="btn btn-link text-decoration-none fw-bold p-0 mb-4 text-primary fs-5"><i class="bi bi-arrow-left"></i> Voltar ao Catálogo</a>
+        <a href="/" class="btn btn-link text-decoration-none fw-bold p-0 mb-4 text-primary"><i class="bi bi-arrow-left"></i> Voltar</a>
         <div class="row g-5">
             <div class="col-md-7">
-                <div id="pCar" class="carousel slide shadow-sm rounded-4 overflow-hidden" data-bs-ride="carousel">
-                    <div class="carousel-inner border">
+                <div id="pCar" class="carousel slide shadow rounded-4 overflow-hidden" data-bs-ride="carousel">
+                    <div class="carousel-inner">
                         {% for img in images %}
                         <div class="carousel-item {% if loop.first %}active{% endif %}">
                             <img src="{{ img.strip() }}">
@@ -32,14 +32,13 @@
                 </div>
             </div>
             <div class="col-md-5">
-                <h1 class="fw-bold text-dark">{{ p.name }}</h1>
+                <h1 class="fw-bold">{{ p.name }}</h1>
                 <div class="price-tag mb-4">
                     {% if p.price > 0 %} R$ {{ "%.2f"|format(p.price) }} {% else %} Consultar valor {% endif %}
                 </div>
-                <h6 class="fw-bold">Descrição do Item:</h6>
                 <p class="text-muted mb-5 fs-5" style="white-space: pre-line;">{{ p.description }}</p>
-                <a href="https://wa.me/5511999999999?text=Gostaria de solicitar orçamento para: {{ p.name }}" target="_blank" class="btn-wa">
-                    <i class="bi bi-whatsapp"></i> Solicitar Orçamento
+                <a href="https://wa.me/5511999999999?text=Interesse em: {{ p.name }}" target="_blank" class="btn-wa shadow">
+                    <i class="bi bi-whatsapp"></i> Pedir pelo WhatsApp
                 </a>
             </div>
         </div>
