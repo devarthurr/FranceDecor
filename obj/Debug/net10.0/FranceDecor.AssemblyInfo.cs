@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FranceDecor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5cd567f0377e674b8145f94319db9bcd105feb1f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e7ae2bd64b9f8f96de279d60082647106e183c39")]
 [assembly: System.Reflection.AssemblyProductAttribute("FranceDecor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FranceDecor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

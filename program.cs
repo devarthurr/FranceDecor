@@ -12,14 +12,14 @@ var produtos = new List<Product>
         Id = 1, 
         Name = "TOPOS DE BOLO", 
         Price = 0.00, 
-        Description = "Modelos personalizados em camadas e papelaria criativa.",
+        Description = "Personalizados em camadas e papelaria criativa de luxo.",
         Images = new List<string> { "https://i.ibb.co/pBzF6yVT/Whats-App-Image-1.jpg" } 
     },
     new Product { 
         Id = 2, 
         Name = "PERSONALIZADOS LUXO", 
         Price = 150.00, 
-        Description = "Kits premium com detalhes dourados.",
+        Description = "Kits premium com detalhes em dourado.",
         Images = new List<string> { "https://i.ibb.co/5WppfRRm/Whats-App-Image-4.jpg" } 
     }
 };
@@ -34,7 +34,7 @@ app.MapGet("/produto/{id:int}", (int id) => {
 
 app.Run();
 
-// --- MODELOS E HTML (Sempre no final do arquivo) ---
+// --- DEFINIÇÕES E HTML ---
 
 public class Product {
     public int Id { get; set; }
@@ -79,9 +79,11 @@ partial class Program {
         <div class="container py-5"><div class="card border-0 shadow-lg rounded-4 p-4">
         <a href="/" class="btn btn-outline-secondary mb-3 rounded-pill" style="width: fit-content;">← Voltar</a>
         <div class="row"><div class="col-md-6 text-center"><img src="{p.Images[0]}" class="img-fluid rounded" style="max-height: 400px;"></div>
-        <div class="col-md-6"><h1 class="fw-bold" style="color: #0047BB;">{p.Name}</h1><h2 class="fw-bold" style="color: #D4AF37;">{(p.Price > 0 ? "R$ " + p.Price.ToString("N2") : "Consultar Valor")}</h2>
-        <p class="mt-4 text-muted fs-5">{p.Description}</p>
-        <a href="https://wa.me/5511999999999" class="btn btn-success btn-lg w-100 py-3 fw-bold rounded-pill shadow">PEDIR NO WHATSAPP</a>
+        <div class="col-md-6 p-4">
+        <h1 class="fw-bold" style="color: #0047BB;">{p.Name}</h1>
+        <h2 class="fw-bold mb-4" style="color: #D4AF37;">{(p.Price > 0 ? "R$ " + p.Price.ToString("N2") : "Consultar Valor")}</h2>
+        <p class="text-muted fs-5">{p.Description}</p>
+        <a href="https://wa.me/5511999999999" class="btn btn-success btn-lg w-100 py-3 fw-bold rounded-pill shadow">ENCOMENDAR NO WHATSAPP</a>
         </div></div></div></div></body></html>
         """;
     }
