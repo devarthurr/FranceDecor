@@ -5,20 +5,21 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_2026_final_fix'
+app.secret_key = 'france_decor_2026_final_safe'
 
-# --- CONFIGURAÇÃO DE BANCO DE DADOS PERMANENTE E ANTI-BLOQUEIO ---
+# --- CONFIGURAÇÃO DE BANCO DE DADOS BLINDADA ---
 basedir = os.path.abspath(os.path.dirname(__file__))
 data_dir = os.path.join(basedir, 'data')
 
-# Cria a pasta 'data' se não existir para evitar erros de permissão do Windows
 if not os.path.exists(data_dir):
     os.makedirs(data_dir)
 
 db_path = os.path.join(data_dir, 'database_france.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 30}}
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "connect_args": {"timeout": 30}
+}
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -41,7 +42,7 @@ class Product(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- ROTAS PÚBLICAS ---
+# --- ROTAS ---
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -51,7 +52,7 @@ def index():
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
     images = p.image_urls.split(',') if p.image_urls else []
-    return render_template('produto.html', p=p, images=images)
+    return render_template('produto.html', p=p, images=[img.strip() for img in images])
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -60,10 +61,9 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Usuário ou senha inválidos.')
+        flash('Acesso negado.')
     return render_template('login.html')
 
-# --- ROTAS ADMIN ---
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
