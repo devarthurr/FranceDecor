@@ -1,123 +1,53 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask, render_template, request, redirect, url_for
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_resgate_v5_final'
 
-# --- CONFIGURAÇÃO DE BANCO DE DADOS ---
-basedir = os.path.abspath(os.path.dirname(__file__))
+# Sua URL do Neon configurada
+DATABASE_URL = "postgresql://neondb_owner:npg_FWjUN2XYlku0@ep-quiet-sound-aco0b99g-pooler.sa-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require"
 
-if os.environ.get('VERCEL'):
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/france_decor.db'
-else:
-    db_dir = os.path.join(basedir, 'database_file')
-    if not os.path.exists(db_dir): os.makedirs(db_dir)
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(db_dir, 'france_decor.db')
-
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-
-login_manager = LoginManager(app)
-login_manager.login_view = 'login'
-
-class User(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-
-class Product(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text)
-    price = db.Column(db.Float, default=0.0)
-    image_urls = db.Column(db.Text)
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-
-# --- ROTAS ---
+def get_db_connection():
+    # Usa a variável da Vercel se existir, senão usa a sua direta
+    target_url = os.getenv('postgresql://neondb_owner:npg_FWjUN2XYlku0@ep-quiet-sound-aco0b99g-pooler.sa-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require', DATABASE_URL)
+    return psycopg2.connect(target_url)
 
 @app.route('/')
 def index():
-    produtos = Product.query.order_by(Product.id.desc()).all()
-    return render_template('index.html', produtos=produtos)
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        cur.execute('SELECT * FROM produtos ORDER BY criado_em DESC;')
+        produtos = cur.fetchall()
+        cur.close()
+        conn.close()
+        return render_template('index.html', produtos=produtos)
+    except Exception as e:
+        return f"Erro ao conectar no banco: {e}"
 
-@app.route('/produto/<int:id>')
-def produto_detalhes(id):
-    p = Product.query.get_or_404(id)
-    # CORREÇÃO: Se image_urls estiver vazio ou None, cria uma lista vazia para não dar erro
-    if p.image_urls:
-        images = [img.strip() for img in p.image_urls.split(',') if img.strip()]
-    else:
-        images = []
-    return render_template('produto.html', p=p, images=images)
+@app.route('/cadastro')
+def cadastro():
+    return render_template('cadastro.html')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        user = User.query.filter_by(username=request.form.get('username')).first()
-        if user and check_password_hash(user.password, request.form.get('password')):
-            login_user(user)
-            return redirect(url_for('admin'))
-        flash('Erro no login.')
-    return render_template('login.html')
+@app.route('/adicionar', methods=['POST'])
+def adicionar():
+    nome = request.form['nome']
+    descricao = request.form['descricao']
+    preco = request.form['preco']
+    estoque = request.form['estoque']
+    categoria = request.form.get('categoria', 'Geral')
 
-@app.route('/admin', methods=['GET', 'POST'])
-@login_required
-def admin():
-    if request.method == 'POST':
-        try:
-            nome = request.form.get('name')
-            p_raw = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
-            preco = float(p_raw)
-            links = request.form.get('image_urls').strip()
-            desc = request.form.get('description')
-            novo = Product(name=nome, description=desc, image_urls=links, price=preco)
-            db.session.add(novo)
-            db.session.commit()
-            return redirect(url_for('admin'))
-        except Exception as e:
-            db.session.rollback()
-            return f"Erro: {e}"
-    return render_template('admin.html', produtos=Product.query.all())
-
-@app.route('/admin/edit/<int:id>', methods=['GET', 'POST'])
-@login_required
-def edit_product(id):
-    p = Product.query.get_or_404(id)
-    if request.method == 'POST':
-        p.name = request.form.get('name')
-        p_val = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
-        p.price = float(p_val)
-        p.image_urls = request.form.get('image_urls').strip()
-        p.description = request.form.get('description')
-        db.session.commit()
-        return redirect(url_for('admin'))
-    return render_template('edit.html', p=p)
-
-@app.route('/delete/<int:id>')
-@login_required
-def delete(id):
-    p = Product.query.get(id)
-    if p:
-        db.session.delete(p)
-        db.session.commit()
-    return redirect(url_for('admin'))
-
-@app.route('/logout')
-def logout():
-    logout_user()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        'INSERT INTO produtos (nome, descricao, preco, estoque, categoria) VALUES (%s, %s, %s, %s, %s)',
+        (nome, descricao, preco, estoque, categoria)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
     return redirect(url_for('index'))
-
-with app.app_context():
-    db.create_all()
-    if not User.query.filter_by(username='admin').first():
-        db.session.add(User(username='admin', password=generate_password_hash('password123')))
-        db.session.commit()
 
 if __name__ == '__main__':
     app.run(debug=True)
