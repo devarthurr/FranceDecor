@@ -2,51 +2,55 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>France Decor</title>
+    <title>France Decor | Catálogo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         :root { --azul: #0047BB; --gold: #D4AF37; }
-        body { background-color: #f8f9fa; }
-        .navbar { background: var(--azul); border-bottom: 4px solid var(--gold); padding: 12px 0; }
-        .logo-nav { height: 70px; border-radius: 10px; border: 2px solid white; background: white; }
-        .card-product { border: none; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: white; transition: 0.3s; }
-        .img-box { height: 250px; display: flex; align-items: center; justify-content: center; padding: 10px; overflow: hidden; }
+        body { background-color: #f8f9fa; font-family: sans-serif; }
+        .navbar { background: var(--azul); border-bottom: 4px solid var(--gold); padding: 10px 0; }
+        .logo-nav { height: 75px; border-radius: 12px; border: 2px solid white; background: white; }
+        .insta-link { color: white; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 8px; }
+        .card-product { border: none; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); background: white; transition: 0.3s; }
+        .img-box { height: 240px; display: flex; align-items: center; justify-content: center; padding: 15px; }
         .img-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .admin-lock { position: fixed; bottom: 25px; right: 25px; background: rgba(0,0,0,0.2); color: white; width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; z-index: 1000; }
     </style>
 </head>
 <body>
-    <nav class="navbar mb-4 sticky-top">
+    <nav class="navbar mb-4 sticky-top shadow-sm">
         <div class="container d-flex justify-content-between align-items-center">
             <a class="navbar-brand d-flex align-items-center gap-3 text-white fw-bold m-0" href="/">
                 <img src="{{ url_for('static', filename='logo.jpg') }}" class="logo-nav">
-                FRANCE DECOR
+                <div class="d-none d-sm-block">FRANCE DECOR</div>
             </a>
-            <a href="https://www.instagram.com/_france.decor/" target="_blank" class="text-white text-decoration-none fw-bold">
-                <i class="bi bi-instagram fs-4"></i> Instagram
+            <a href="https://www.instagram.com/_france.decor/" target="_blank" class="insta-link">
+                <i class="bi bi-instagram fs-4"></i> <span>Instagram</span>
             </a>
         </div>
     </nav>
-
     <div class="container pb-5">
         <div class="row row-cols-1 row-cols-md-3 g-4">
             {% for p in produtos %}
             <div class="col">
                 <div class="card card-product h-100 p-2 text-center">
-                    <a href="{{ url_for('produto_detalhes', id=p.id) }}" class="text-decoration-none text-dark">
+                    <a href="/produto/{{p.id}}" class="text-decoration-none text-dark">
                         <div class="img-box">
-                            {% set img_name = p.image_urls.split(',')[0] %}
-                            <img src="{{ url_for('static', filename='produtos/' + img_name) }}">
+                            <img src="{{ p.image_urls.split(',')[0] if p.image_urls else '' }}">
                         </div>
-                        <h6 class="fw-bold mt-2">{{ p.name }}</h6>
-                        <div class="text-primary fw-bold mb-2">R$ {{ "%.2f"|format(p.price) if p.price > 0 else "Consultar" }}</div>
+                        <h6 class="fw-bold px-2 mt-2">{{ p.name }}</h6>
+                        <div class="text-primary fw-bold mb-2">
+                            {% if p.price > 0 %} R$ {{ "%.2f"|format(p.price) }} {% else %} Consultar valor {% endif %}
+                        </div>
                     </a>
-                    <a href="https://wa.me/5511999999999" class="btn btn-success w-100 rounded-pill fw-bold">WhatsApp</a>
+                    <a href="https://wa.me/5511999999999?text=Interesse em: {{ p.name }}" class="btn btn-success w-100 rounded-pill fw-bold mb-2">
+                        <i class="bi bi-whatsapp"></i> WhatsApp
+                    </a>
                 </div>
             </div>
             {% endfor %}
         </div>
     </div>
-    <a href="/login" style="position:fixed; bottom:20px; right:20px; color:#ccc;"><i class="bi bi-lock-fill"></i></a>
+    <a href="/login" class="admin-lock shadow"><i class="bi bi-lock-fill"></i></a>
 </body>
 </html>

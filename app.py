@@ -3,37 +3,40 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_final_2026'
+app.secret_key = 'france_decor_blindado_2026'
 
-# --- CONFIGURAÇÃO DE PASTAS ---
+# --- CONFIGURAÇÃO DO BANCO DE DADOS (RESOLUÇÃO DEFINITIVA) ---
 basedir = os.path.abspath(os.path.dirname(__file__))
 
-# Pasta onde as fotos ficam no seu VS Code
-UPLOAD_FOLDER = os.path.join(basedir, 'static', 'produtos')
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# Identifica se está no Windows ou Linux (Vercel)
+database_url = os.environ.get('DATABASE_URL')
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# --- BANCO DE DADOS ---
-# Se estiver na Vercel, usa a pasta /tmp para não crashar
-if os.environ.get('VERCEL'):
-    db_path = '/tmp/france_decor.db'
+if database_url:
+    # Caso você conecte o Postgres da Vercel no futuro
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
-    db_dir = os.path.join(basedir, 'database_file')
-    if not os.path.exists(db_dir): os.makedirs(db_dir)
-    db_path = os.path.join(db_dir, 'france_decor.db')
+    if os.name == 'nt':  # Se for Windows (Seu PC)
+        db_dir = os.path.join(basedir, 'database_file')
+        if not os.path.exists(db_dir):
+            os.makedirs(db_dir)
+        db_path = os.path.join(db_dir, 'france_decor.db')
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
+    else:  # Se for Vercel/Linux
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/france_decor.db'
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Timeout estendido para não travar ao colar muitos links de imagens
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"connect_args": {"timeout": 30}}
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# MODELOS
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -50,7 +53,7 @@ class Product(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- ROTAS ---
+# ROTAS PÚBLICAS
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -59,8 +62,7 @@ def index():
 @app.route('/produto/<int:id>')
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
-    # Garante que as imagens sejam lidas como uma lista limpa
-    images = [img.strip() for img in p.image_urls.split(',') if img.strip()]
+    images = [img.strip() for img in p.image_urls.split(',')] if p.image_urls else []
     return render_template('produto.html', p=p, images=images)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -70,52 +72,51 @@ def login():
         if user and check_password_hash(user.password, request.form.get('password')):
             login_user(user)
             return redirect(url_for('admin'))
-        flash('Login inválido')
+        flash('Usuário ou senha inválidos.')
     return render_template('login.html')
 
+# ROTAS ADMIN
 @app.route('/admin', methods=['GET', 'POST'])
 @login_required
 def admin():
     if request.method == 'POST':
         try:
             nome = request.form.get('name')
-            preco = float(request.form.get('price').replace(',', '.')) if request.form.get('price') else 0.0
-            desc = request.form.get('description')
+            # Limpa o preço para aceitar vírgula ou ponto
+            p_raw = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
+            preco = float(p_raw)
+            urls = request.form.get('image_urls').replace('\n', '').strip()
             
-            files = request.files.getlist('fotos')
-            saved_names = []
-            
-            for file in files:
-                if file and file.filename:
-                    filename = secure_filename(file.filename)
-                    # Nome único para evitar conflitos
-                    unique_name = f"item_{id(file)}_{filename}"
-                    file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_name))
-                    saved_names.append(unique_name)
-            
-            if not saved_names:
-                flash("Por favor, selecione pelo menos uma imagem.")
-                return redirect(url_for('admin'))
-
-            urls_final = ",".join(saved_names)
-            novo = Product(name=nome, description=desc, image_urls=urls_final, price=preco)
+            novo = Product(name=nome, description=request.form.get('description'), image_urls=urls, price=preco)
             db.session.add(novo)
             db.session.commit()
-            flash("Produto criado com sucesso!")
             return redirect(url_for('admin'))
         except Exception as e:
             db.session.rollback()
-            flash(f"Erro ao salvar: {e}")
-    
-    produtos = Product.query.all()
-    return render_template('admin.html', produtos=produtos)
+            return f"Erro ao salvar: {e}"
+    return render_template('admin.html', produtos=Product.query.all())
+
+@app.route('/admin/edit/<int:id>', methods=['GET', 'POST'])
+@login_required
+def edit_product(id):
+    p = Product.query.get_or_404(id)
+    if request.method == 'POST':
+        p.name = request.form.get('name')
+        p.description = request.form.get('description')
+        p.image_urls = request.form.get('image_urls').replace('\n', '').strip()
+        p_raw = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
+        p.price = float(p_raw)
+        db.session.commit()
+        return redirect(url_for('admin'))
+    return render_template('edit.html', p=p)
 
 @app.route('/delete/<int:id>')
 @login_required
 def delete(id):
     p = Product.query.get(id)
-    db.session.delete(p)
-    db.session.commit()
+    if p:
+        db.session.delete(p)
+        db.session.commit()
     return redirect(url_for('admin'))
 
 @app.route('/logout')
@@ -123,6 +124,7 @@ def logout():
     logout_user()
     return redirect(url_for('index'))
 
+# Inicialização do Banco
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='admin').first():
