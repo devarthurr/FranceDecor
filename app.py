@@ -5,9 +5,9 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = 'france_decor_mizera_corrigida_2026'
+app.secret_key = 'france_decor_mizera_blindada_2026'
 
-# --- CONFIGURAÇÃO DO BANCO (RAIZ DO PROJETO) ---
+# --- CONFIGURAÇÃO DO BANCO (NA RAIZ DO PROJETO) ---
 basedir = os.path.abspath(os.path.dirname(__file__))
 db_path = os.path.join(basedir, 'france_decor.db')
 
@@ -36,6 +36,7 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # --- ROTAS ---
+
 @app.route('/')
 def index():
     produtos = Product.query.order_by(Product.id.desc()).all()
@@ -44,7 +45,10 @@ def index():
 @app.route('/produto/<int:id>')
 def produto_detalhes(id):
     p = Product.query.get_or_404(id)
-    images = [img.strip() for img in p.image_urls.split(',') if p.image_urls and img.strip()]
+    if p.image_urls:
+        images = [img.strip() for img in p.image_urls.split(',') if img.strip()]
+    else:
+        images = []
     return render_template('produto.html', p=p, images=images)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -61,9 +65,9 @@ def login():
 @login_required
 def admin():
     if request.method == 'POST':
-        # VERIFICAÇÃO SE ESTÁ NO PC OU NA VERCEL
+        # TRAVA DE SEGURANÇA VERCEL
         if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'):
-            return "AVISO: Para salvar, use o VS Code no seu PC, salve o produto e dê PUSH no arquivo 'france_decor.db'."
+            return "AVISO: A Vercel é apenas vitrine. Para salvar novos produtos, use o VS Code no seu PC e dê PUSH no arquivo 'france_decor.db'."
         
         try:
             nome = request.form.get('name')
@@ -87,8 +91,8 @@ def admin():
 def edit_product(id):
     p = Product.query.get_or_404(id)
     if request.method == 'POST':
-        if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'):
-            return "AVISO: Edições devem ser feitas no VS Code local."
+        if os.environ.get('VERCEL'):
+            return "AVISO: Edições só funcionam no VS Code local."
             
         p.name = request.form.get('name')
         p_val = request.form.get('price').replace(',', '.') if request.form.get('price') else '0'
@@ -102,8 +106,8 @@ def edit_product(id):
 @app.route('/delete/<int:id>')
 @login_required
 def delete(id):
-    if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'):
-        return "AVISO: Exclusões só via VS Code local."
+    if os.environ.get('VERCEL'):
+        return "AVISO: Exclusões só funcionam no VS Code local."
     p = Product.query.get(id)
     db.session.delete(p)
     db.session.commit()
